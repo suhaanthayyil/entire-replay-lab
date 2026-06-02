@@ -1,5 +1,9 @@
 # Entire Replay Lab
 
+[![CI](https://github.com/suhaanthayyil/entire-replay-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/suhaanthayyil/entire-replay-lab/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Prototype](https://img.shields.io/badge/status-prototype-orange.svg)](docs/ROADMAP.md)
+
 Private, repo-specific agent evaluation from real Entire checkpoints.
 
 Replay Lab turns past agent work into repeatable eval tasks. It checks out the
@@ -102,6 +106,8 @@ Run the full local smoke check:
 ./scripts/smoke.sh /path/to/entire-enabled/repo
 ```
 
+For all commands, see [docs/COMMANDS.md](docs/COMMANDS.md).
+
 ## Example Output
 
 ```text
@@ -154,6 +160,7 @@ It makes agent adoption measurable using the team's own historical work.
 docs/
   ACCEPTANCE.md        Evidence checklist for build, patch, doctor, and live use
   ARCHITECTURE.md      How replay data flows through Entire
+  COMMANDS.md          Script and patched Entire command reference
   DEMO.md              CEO/demo script and commands
   FAQ.md               Common setup and safety questions
   JSON_SCHEMA.md       Stable v1 result shape

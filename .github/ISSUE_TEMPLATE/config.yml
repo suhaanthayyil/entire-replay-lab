@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Entire Replay Lab README
+    url: https://github.com/suhaanthayyil/entire-replay-lab#readme
+    about: Start here for setup, commands, and validation.

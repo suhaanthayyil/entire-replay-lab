@@ -81,6 +81,7 @@ for file in \
   "$ROOT/README.md" \
   "$ROOT/docs/ACCEPTANCE.md" \
   "$ROOT/docs/ARCHITECTURE.md" \
+  "$ROOT/docs/COMMANDS.md" \
   "$ROOT/docs/DEMO.md" \
   "$ROOT/docs/FAQ.md" \
   "$ROOT/docs/JSON_SCHEMA.md" \
@@ -97,7 +98,9 @@ do
 done
 
 grep -q "The Pain It Solves" "$ROOT/README.md"
+grep -q "actions/workflows/ci.yml/badge.svg" "$ROOT/README.md"
 grep -q "isolated worktree" "$ROOT/README.md"
+grep -q "entire replay checkpoint" "$ROOT/docs/COMMANDS.md"
 grep -q "One-Command Smoke" "$ROOT/docs/ACCEPTANCE.md"
 grep -q "private benchmark" "$ROOT/docs/PRODUCT_BRIEF.md"
 grep -q "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
