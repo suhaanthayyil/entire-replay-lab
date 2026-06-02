@@ -1,4 +1,4 @@
-.PHONY: verify validate build demo doctor check-patch smoke clean
+.PHONY: verify validate build demo doctor check-patch smoke release-check clean
 
 verify:
 	./scripts/verify-repo.sh
@@ -20,6 +20,9 @@ check-patch:
 
 smoke:
 	./scripts/smoke.sh
+
+release-check:
+	./scripts/release-check.sh
 
 clean:
 	./scripts/clean.sh

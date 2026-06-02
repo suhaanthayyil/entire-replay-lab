@@ -3,6 +3,23 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+require_file() {
+  local file="$1"
+  if [[ ! -s "$file" ]]; then
+    echo "Missing required file: $file" >&2
+    exit 1
+  fi
+}
+
+require_contains() {
+  local needle="$1"
+  local file="$2"
+  if ! grep -Fq "$needle" "$file"; then
+    echo "Missing required text in $file: $needle" >&2
+    exit 1
+  fi
+}
+
 python3 -m json.tool "$ROOT/examples/replay-run.json" >/dev/null
 python3 -m json.tool "$ROOT/examples/eval-run.json" >/dev/null
 python3 -m json.tool "$ROOT/schemas/replay-run.schema.json" >/dev/null
@@ -86,6 +103,8 @@ for file in \
   "$ROOT/docs/FAQ.md" \
   "$ROOT/docs/JSON_SCHEMA.md" \
   "$ROOT/docs/PRODUCT_BRIEF.md" \
+  "$ROOT/docs/RELEASE.md" \
+  "$ROOT/docs/releases/v0.1.0.md" \
   "$ROOT/docs/ROADMAP.md" \
   "$ROOT/docs/TESTING.md" \
   "$ROOT/docs/CEO_MESSAGE.md" \
@@ -94,20 +113,23 @@ for file in \
   "$ROOT/schemas/eval-run.schema.json" \
   "$ROOT/scripts/validate-examples.py"
 do
-  test -s "$file"
+  require_file "$file"
 done
 
-grep -q "The Pain It Solves" "$ROOT/README.md"
-grep -q "actions/workflows/ci.yml/badge.svg" "$ROOT/README.md"
-grep -q "isolated worktree" "$ROOT/README.md"
-grep -q "entire replay checkpoint" "$ROOT/docs/COMMANDS.md"
-grep -q "One-Command Smoke" "$ROOT/docs/ACCEPTANCE.md"
-grep -q "private benchmark" "$ROOT/docs/PRODUCT_BRIEF.md"
-grep -q "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
-grep -q "Validate Replay Lab example JSON" "$ROOT/scripts/validate-examples.py"
-grep -q "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
-grep -q "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"
-grep -q "cmd/entire/cli/replay_test.go" "$ROOT/patches/entire-replay-lab.patch"
+require_contains "The Pain It Solves" "$ROOT/README.md"
+require_contains "actions/workflows/ci.yml/badge.svg" "$ROOT/README.md"
+require_contains "isolated worktree" "$ROOT/README.md"
+require_contains "entire replay checkpoint" "$ROOT/docs/COMMANDS.md"
+require_contains "One-Command Smoke" "$ROOT/docs/ACCEPTANCE.md"
+require_contains "private benchmark" "$ROOT/docs/PRODUCT_BRIEF.md"
+require_contains "Release Check" "$ROOT/docs/RELEASE.md"
+require_contains "Entire Replay Lab v0.1.0" "$ROOT/docs/releases/v0.1.0.md"
+require_contains "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
+require_contains "Release check" "$ROOT/scripts/release-check.sh"
+require_contains "Validate Replay Lab example JSON" "$ROOT/scripts/validate-examples.py"
+require_contains "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
+require_contains "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"
+require_contains "cmd/entire/cli/replay_test.go" "$ROOT/patches/entire-replay-lab.patch"
 bash -n "$ROOT"/scripts/*.sh
 
 echo "Replay Lab repo docs and examples look good."

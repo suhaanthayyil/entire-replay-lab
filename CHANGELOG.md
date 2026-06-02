@@ -11,3 +11,4 @@
 - Added dependency-free JSON example validation against local schemas.
 - Updated CI to Node 24-based GitHub Actions and disabled unused Go caching.
 - Added README badges, GitHub templates, Dependabot, and command reference docs.
+- Added release-check tooling and v0.1.0 prototype release notes.

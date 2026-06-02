@@ -165,6 +165,7 @@ docs/
   FAQ.md               Common setup and safety questions
   JSON_SCHEMA.md       Stable v1 result shape
   PRODUCT_BRIEF.md     Pain, solution, audience, and demo hook
+  RELEASE.md           Release checklist and tagging flow
   ROADMAP.md           MVP, product path, and open questions
   TESTING.md           Validation levels and live-test commands
 examples/
@@ -182,6 +183,7 @@ scripts/
   demo-commands.sh     Print commands for a real Entire-enabled repo
   doctor.sh            Preflight local tools, agents, binary, and target repo
   refresh-patch.sh     Regenerate the patch from a local CLI checkout
+  release-check.sh     Run release-ready verification without live agent use
   smoke.sh             Run repo verify, build, doctor, and patch tests
   validate-examples.py Validate example JSON against local schemas
   verify-repo.sh       Validate docs and JSON examples
