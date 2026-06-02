@@ -9,6 +9,15 @@ schemas/replay-run.schema.json
 schemas/eval-run.schema.json
 ```
 
+Validate the example payloads against those schemas with:
+
+```bash
+python3 ./scripts/validate-examples.py
+```
+
+The validator is intentionally dependency-free and supports the JSON Schema
+features used by this repo.
+
 ## ReplayRun
 
 ```json

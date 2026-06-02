@@ -10,12 +10,13 @@ Evidence:
 
 ```bash
 ./scripts/verify-repo.sh
+python3 ./scripts/validate-examples.py
 ```
 
 Proves:
 
 - docs and examples exist
-- example JSON parses and has required v1 keys
+- example JSON parses and validates against the local schemas
 - schemas parse
 - patch file exists and includes Replay Lab implementation files
 - scripts pass shell syntax checks

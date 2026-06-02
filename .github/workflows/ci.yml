@@ -16,6 +16,8 @@ jobs:
           go-version: "1.26.x"
       - name: Verify repo docs and examples
         run: ./scripts/verify-repo.sh
+      - name: Validate example JSON schemas
+        run: python3 ./scripts/validate-examples.py
       - name: Shell syntax check
         run: bash -n scripts/*.sh
       - name: Build patched Entire CLI

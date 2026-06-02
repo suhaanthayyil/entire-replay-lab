@@ -7,6 +7,7 @@ python3 -m json.tool "$ROOT/examples/replay-run.json" >/dev/null
 python3 -m json.tool "$ROOT/examples/eval-run.json" >/dev/null
 python3 -m json.tool "$ROOT/schemas/replay-run.schema.json" >/dev/null
 python3 -m json.tool "$ROOT/schemas/eval-run.schema.json" >/dev/null
+python3 "$ROOT/scripts/validate-examples.py" >/dev/null
 
 python3 - "$ROOT" <<'PY'
 import json
@@ -89,7 +90,8 @@ for file in \
   "$ROOT/docs/CEO_MESSAGE.md" \
   "$ROOT/patches/entire-replay-lab.patch" \
   "$ROOT/schemas/replay-run.schema.json" \
-  "$ROOT/schemas/eval-run.schema.json"
+  "$ROOT/schemas/eval-run.schema.json" \
+  "$ROOT/scripts/validate-examples.py"
 do
   test -s "$file"
 done
@@ -99,6 +101,7 @@ grep -q "isolated worktree" "$ROOT/README.md"
 grep -q "One-Command Smoke" "$ROOT/docs/ACCEPTANCE.md"
 grep -q "private benchmark" "$ROOT/docs/PRODUCT_BRIEF.md"
 grep -q "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
+grep -q "Validate Replay Lab example JSON" "$ROOT/scripts/validate-examples.py"
 grep -q "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
 grep -q "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"
 grep -q "cmd/entire/cli/replay_test.go" "$ROOT/patches/entire-replay-lab.patch"

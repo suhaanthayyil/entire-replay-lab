@@ -176,6 +176,7 @@ scripts/
   doctor.sh            Preflight local tools, agents, binary, and target repo
   refresh-patch.sh     Regenerate the patch from a local CLI checkout
   smoke.sh             Run repo verify, build, doctor, and patch tests
+  validate-examples.py Validate example JSON against local schemas
   verify-repo.sh       Validate docs and JSON examples
 ```
 

@@ -8,3 +8,4 @@
 - Added CI for repo validation, patched CLI build, and Replay Lab patch tests.
 - Added a doctor script and FAQ for local setup validation.
 - Added a smoke script plus acceptance and product-brief docs.
+- Added dependency-free JSON example validation against local schemas.

@@ -13,7 +13,7 @@ Run this before committing docs, schemas, or scripts:
 It checks:
 
 - JSON examples parse successfully.
-- JSON examples contain the expected v1 keys.
+- JSON examples validate against the local schemas.
 - Schemas parse successfully.
 - Main docs exist and include the important setup sections.
 - Shell scripts pass `bash -n`.
