@@ -78,6 +78,12 @@ cd ~/Documents/Ultron
 entire checkpoint list
 ```
 
+Before running an agent replay, check local prerequisites:
+
+```bash
+./scripts/doctor.sh ~/Documents/Ultron
+```
+
 Replay one checkpoint:
 
 ```bash

@@ -6,3 +6,4 @@
 - Added build, verify, patch-check, patch-refresh, demo, and clean scripts.
 - Added architecture, testing, JSON schema, demo, roadmap, and CEO-message docs.
 - Added CI for repo validation, patched CLI build, and Replay Lab patch tests.
+- Added a doctor script and FAQ for local setup validation.

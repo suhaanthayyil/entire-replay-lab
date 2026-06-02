@@ -11,7 +11,13 @@ WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/entire-replay-patch-check.XXXXXX")"
 trap 'rm -rf "$WORKDIR"' EXIT
 
 git clone --quiet "$ENTIRE_CLI_REPO" "$WORKDIR/cli"
-git -C "$WORKDIR/cli" checkout --quiet --detach "$ENTIRE_CLI_REF"
+if git -C "$WORKDIR/cli" rev-parse --verify --quiet "$ENTIRE_CLI_REF^{commit}" >/dev/null; then
+  CHECKOUT_REF="$ENTIRE_CLI_REF"
+else
+  git -C "$WORKDIR/cli" fetch --quiet origin "$ENTIRE_CLI_REF"
+  CHECKOUT_REF="FETCH_HEAD"
+fi
+git -C "$WORKDIR/cli" checkout --quiet --detach "$CHECKOUT_REF"
 git -C "$WORKDIR/cli" apply --check "$ENTIRE_REPLAY_PATCH"
 git -C "$WORKDIR/cli" apply "$ENTIRE_REPLAY_PATCH"
 

@@ -80,6 +80,7 @@ for file in \
   "$ROOT/README.md" \
   "$ROOT/docs/ARCHITECTURE.md" \
   "$ROOT/docs/DEMO.md" \
+  "$ROOT/docs/FAQ.md" \
   "$ROOT/docs/JSON_SCHEMA.md" \
   "$ROOT/docs/ROADMAP.md" \
   "$ROOT/docs/TESTING.md" \
@@ -93,6 +94,7 @@ done
 
 grep -q "The Pain It Solves" "$ROOT/README.md"
 grep -q "isolated worktree" "$ROOT/README.md"
+grep -q "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
 grep -q "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
 grep -q "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"
 grep -q "cmd/entire/cli/replay_test.go" "$ROOT/patches/entire-replay-lab.patch"

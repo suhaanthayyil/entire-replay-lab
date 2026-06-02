@@ -1,4 +1,4 @@
-.PHONY: verify build demo check-patch clean
+.PHONY: verify build demo doctor check-patch clean
 
 verify:
 	./scripts/verify-repo.sh
@@ -8,6 +8,9 @@ build:
 
 demo:
 	./scripts/demo-commands.sh
+
+doctor:
+	./scripts/doctor.sh
 
 check-patch:
 	./scripts/check-patch.sh

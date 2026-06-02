@@ -90,6 +90,12 @@ Reopen saved reports:
 /path/to/entire-replay-lab/bin/entire eval report <run-id>
 ```
 
+Check your machine before a live replay:
+
+```bash
+./scripts/doctor.sh /path/to/entire-enabled/repo
+```
+
 ## Example Output
 
 ```text
@@ -142,6 +148,7 @@ It makes agent adoption measurable using the team's own historical work.
 docs/
   ARCHITECTURE.md      How replay data flows through Entire
   DEMO.md              CEO/demo script and commands
+  FAQ.md               Common setup and safety questions
   JSON_SCHEMA.md       Stable v1 result shape
   ROADMAP.md           MVP, product path, and open questions
   TESTING.md           Validation levels and live-test commands
@@ -158,6 +165,7 @@ scripts/
   check-patch.sh       Apply the patch to a fresh CLI clone and run Replay tests
   clean.sh             Remove generated build artifacts
   demo-commands.sh     Print commands for a real Entire-enabled repo
+  doctor.sh            Preflight local tools, agents, binary, and target repo
   refresh-patch.sh     Regenerate the patch from a local CLI checkout
   verify-repo.sh       Validate docs and JSON examples
 ```
