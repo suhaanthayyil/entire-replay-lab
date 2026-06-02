@@ -11,6 +11,9 @@ entireio/cli@e858fb537e70b8008a10f712cb73588cb67aacf2
 patches/entire-replay-lab.patch
 ```
 
+The pinned inputs are centralized in `scripts/replay-lab-env.sh` and checked by
+`./scripts/verify-reproducibility.sh`.
+
 ## Flow
 
 ```mermaid

@@ -42,9 +42,13 @@ The runnable implementation is captured in `patches/entire-replay-lab.patch`.
 The build script applies it to a known Entire CLI base commit and then builds a
 local `entire` binary.
 
-- Default base: `entireio/cli@e858fb537e70b8008a10f712cb73588cb67aacf2`
+- Default repo: `https://github.com/entireio/cli.git`
+- Default ref: `e858fb537e70b8008a10f712cb73588cb67aacf2`
 - Patch: `patches/entire-replay-lab.patch`
 - Commands added there: `entire replay` and `entire eval`
+
+The pinned build inputs are centralized in `scripts/replay-lab-env.sh` and
+checked by [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
 ## Quick Start
 
@@ -166,6 +170,7 @@ docs/
   JSON_SCHEMA.md       Stable v1 result shape
   PRODUCT_BRIEF.md     Pain, solution, audience, and demo hook
   RELEASE.md           Release checklist and tagging flow
+  REPRODUCIBILITY.md   Pinned upstream base and patch verification
   ROADMAP.md           MVP, product path, and open questions
   TESTING.md           Validation levels and live-test commands
 examples/
@@ -184,9 +189,11 @@ scripts/
   doctor.sh            Preflight local tools, agents, binary, and target repo
   refresh-patch.sh     Regenerate the patch from a local CLI checkout
   release-check.sh     Run release-ready verification without live agent use
+  replay-lab-env.sh    Shared pinned Entire CLI repo/ref/patch defaults
   smoke.sh             Run repo verify, build, doctor, and patch tests
   validate-doc-links.py Validate local Markdown links and anchors
   validate-examples.py Validate example JSON against local schemas
+  verify-reproducibility.sh Check pinned build inputs stay in sync
   verify-repo.sh       Validate docs and JSON examples
 ```
 

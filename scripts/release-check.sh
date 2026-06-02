@@ -15,6 +15,10 @@ echo "== Release check: markdown link validation =="
 python3 "$ROOT/scripts/validate-doc-links.py"
 
 echo
+echo "== Release check: reproducibility metadata =="
+"$ROOT/scripts/verify-reproducibility.sh"
+
+echo
 echo "== Release check: patched CLI build =="
 "$ROOT/scripts/build-cli.sh"
 

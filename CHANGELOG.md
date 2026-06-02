@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.2 - 2026-06-02
+
+- Centralized pinned Entire CLI repo/ref/patch defaults in `scripts/replay-lab-env.sh`.
+- Added reproducibility verification for pinned build inputs and docs.
+- Made patch refresh default to the same pinned base as build and patch checks.
+
 ## v0.1.1 - 2026-06-02
 
 - Added local Markdown link validation to catch broken docs references in CI.

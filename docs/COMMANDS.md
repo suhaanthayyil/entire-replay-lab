@@ -19,6 +19,8 @@ ENTIRE_CLI_SOURCE=/path/to/local/cli ./scripts/build-cli.sh
 ENTIRE_CLI_REPO=https://github.com/<user>/cli.git ENTIRE_CLI_REF=<ref> ./scripts/build-cli.sh
 ```
 
+The default repo/ref/patch values live in `scripts/replay-lab-env.sh`.
+
 ### `./scripts/check-patch.sh`
 
 Applies the patch to a fresh temporary CLI clone and runs the Replay Lab test
@@ -57,6 +59,15 @@ Validates example JSON payloads against the local schema files.
 
 ```bash
 python3 ./scripts/validate-examples.py
+```
+
+### `./scripts/verify-reproducibility.sh`
+
+Checks that the pinned upstream CLI repo/ref/patch path are non-empty, shared by
+the build scripts, and documented consistently.
+
+```bash
+./scripts/verify-reproducibility.sh
 ```
 
 ### `./scripts/refresh-patch.sh`

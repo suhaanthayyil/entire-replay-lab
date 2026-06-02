@@ -16,6 +16,8 @@ It checks:
 - JSON examples validate against the local schemas.
 - Schemas parse successfully.
 - Main docs exist and include the important setup sections.
+- Local Markdown links and anchors resolve.
+- Reproducibility metadata is in sync.
 - Shell scripts pass `bash -n`.
 
 ## Build Validation
@@ -26,12 +28,19 @@ Build the Replay Lab-enabled Entire CLI:
 ./scripts/build-cli.sh
 ```
 
-By default this clones `entireio/cli`, checks out the tested base commit, applies
-the included Replay Lab patch, and builds `bin/entire`.
+By default this clones `entireio/cli`, checks out the tested base commit from
+`scripts/replay-lab-env.sh`, applies the included Replay Lab patch, and builds
+`bin/entire`.
 
 ```text
 https://github.com/entireio/cli.git@e858fb537e70b8008a10f712cb73588cb67aacf2
 patches/entire-replay-lab.patch
+```
+
+To verify those pinned inputs:
+
+```bash
+./scripts/verify-reproducibility.sh
 ```
 
 To use a local CLI checkout that already has Replay Lab applied:

@@ -2,10 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-: "${ENTIRE_CLI_REPO:=https://github.com/entireio/cli.git}"
-: "${ENTIRE_CLI_REF:=e858fb537e70b8008a10f712cb73588cb67aacf2}"
-: "${ENTIRE_REPLAY_PATCH:=$ROOT/patches/entire-replay-lab.patch}"
+source "$ROOT/scripts/replay-lab-env.sh"
 
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/entire-replay-patch-check.XXXXXX")"
 trap 'rm -rf "$WORKDIR"' EXIT
