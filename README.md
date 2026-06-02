@@ -185,6 +185,7 @@ scripts/
   refresh-patch.sh     Regenerate the patch from a local CLI checkout
   release-check.sh     Run release-ready verification without live agent use
   smoke.sh             Run repo verify, build, doctor, and patch tests
+  validate-doc-links.py Validate local Markdown links and anchors
   validate-examples.py Validate example JSON against local schemas
   verify-repo.sh       Validate docs and JSON examples
 ```

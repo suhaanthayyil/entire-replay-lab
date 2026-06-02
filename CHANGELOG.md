@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.1.1 - 2026-06-02
+
+- Added local Markdown link validation to catch broken docs references in CI.
+
+## v0.1.0 - 2026-06-02
 
 - Added a self-contained Replay Lab patch against a known Entire CLI base.
 - Added build, verify, patch-check, patch-refresh, demo, and clean scripts.

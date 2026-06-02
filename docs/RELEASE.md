@@ -22,9 +22,9 @@ For a machine-specific live check against a repo with checkpoints, also run:
 ./scripts/smoke.sh /path/to/entire-enabled/repo
 ```
 
-Before tagging, also confirm that the matching release note exists:
+Before tagging, also confirm that the matching release note exists, for example:
 
-- `docs/releases/v0.1.0.md`
+- `docs/releases/v0.1.1.md`
 
 ## Tagging
 

@@ -19,6 +19,8 @@ jobs:
         run: ./scripts/verify-repo.sh
       - name: Validate example JSON schemas
         run: python3 ./scripts/validate-examples.py
+      - name: Validate markdown links
+        run: python3 ./scripts/validate-doc-links.py
       - name: Shell syntax check
         run: bash -n scripts/*.sh
       - name: Build patched Entire CLI

@@ -1,10 +1,13 @@
-.PHONY: verify validate build demo doctor check-patch smoke release-check clean
+.PHONY: verify validate doc-links build demo doctor check-patch smoke release-check clean
 
 verify:
 	./scripts/verify-repo.sh
 
 validate:
 	python3 ./scripts/validate-examples.py
+
+doc-links:
+	python3 ./scripts/validate-doc-links.py
 
 build:
 	./scripts/build-cli.sh

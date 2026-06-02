@@ -11,6 +11,10 @@ echo "== Release check: schema validation =="
 python3 "$ROOT/scripts/validate-examples.py"
 
 echo
+echo "== Release check: markdown link validation =="
+python3 "$ROOT/scripts/validate-doc-links.py"
+
+echo
 echo "== Release check: patched CLI build =="
 "$ROOT/scripts/build-cli.sh"
 

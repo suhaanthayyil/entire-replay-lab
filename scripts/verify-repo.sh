@@ -25,6 +25,7 @@ python3 -m json.tool "$ROOT/examples/eval-run.json" >/dev/null
 python3 -m json.tool "$ROOT/schemas/replay-run.schema.json" >/dev/null
 python3 -m json.tool "$ROOT/schemas/eval-run.schema.json" >/dev/null
 python3 "$ROOT/scripts/validate-examples.py" >/dev/null
+python3 "$ROOT/scripts/validate-doc-links.py" >/dev/null
 
 python3 - "$ROOT" <<'PY'
 import json
@@ -105,12 +106,14 @@ for file in \
   "$ROOT/docs/PRODUCT_BRIEF.md" \
   "$ROOT/docs/RELEASE.md" \
   "$ROOT/docs/releases/v0.1.0.md" \
+  "$ROOT/docs/releases/v0.1.1.md" \
   "$ROOT/docs/ROADMAP.md" \
   "$ROOT/docs/TESTING.md" \
   "$ROOT/docs/CEO_MESSAGE.md" \
   "$ROOT/patches/entire-replay-lab.patch" \
   "$ROOT/schemas/replay-run.schema.json" \
   "$ROOT/schemas/eval-run.schema.json" \
+  "$ROOT/scripts/validate-doc-links.py" \
   "$ROOT/scripts/validate-examples.py"
 do
   require_file "$file"
@@ -124,8 +127,10 @@ require_contains "One-Command Smoke" "$ROOT/docs/ACCEPTANCE.md"
 require_contains "private benchmark" "$ROOT/docs/PRODUCT_BRIEF.md"
 require_contains "Release Check" "$ROOT/docs/RELEASE.md"
 require_contains "Entire Replay Lab v0.1.0" "$ROOT/docs/releases/v0.1.0.md"
+require_contains "Entire Replay Lab v0.1.1" "$ROOT/docs/releases/v0.1.1.md"
 require_contains "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
 require_contains "Release check" "$ROOT/scripts/release-check.sh"
+require_contains "Validate local Markdown links" "$ROOT/scripts/validate-doc-links.py"
 require_contains "Validate Replay Lab example JSON" "$ROOT/scripts/validate-examples.py"
 require_contains "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
 require_contains "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"
