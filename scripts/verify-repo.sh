@@ -78,10 +78,12 @@ PY
 
 for file in \
   "$ROOT/README.md" \
+  "$ROOT/docs/ACCEPTANCE.md" \
   "$ROOT/docs/ARCHITECTURE.md" \
   "$ROOT/docs/DEMO.md" \
   "$ROOT/docs/FAQ.md" \
   "$ROOT/docs/JSON_SCHEMA.md" \
+  "$ROOT/docs/PRODUCT_BRIEF.md" \
   "$ROOT/docs/ROADMAP.md" \
   "$ROOT/docs/TESTING.md" \
   "$ROOT/docs/CEO_MESSAGE.md" \
@@ -94,6 +96,8 @@ done
 
 grep -q "The Pain It Solves" "$ROOT/README.md"
 grep -q "isolated worktree" "$ROOT/README.md"
+grep -q "One-Command Smoke" "$ROOT/docs/ACCEPTANCE.md"
+grep -q "private benchmark" "$ROOT/docs/PRODUCT_BRIEF.md"
 grep -q "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
 grep -q "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
 grep -q "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"

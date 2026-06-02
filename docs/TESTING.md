@@ -69,6 +69,17 @@ Remove generated binaries and temp clones:
 ./scripts/clean.sh
 ```
 
+## Smoke Validation
+
+Run the main local proof path:
+
+```bash
+./scripts/smoke.sh ~/Documents/Ultron
+```
+
+This runs repo verification, patched CLI build, command-surface checks, doctor,
+and fresh-clone patch tests.
+
 ## Live Validation
 
 Use a repo that already has Entire checkpoints:

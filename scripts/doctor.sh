@@ -4,6 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_REPO="${1:-}"
 ENTIRE_BIN="${ENTIRE_BIN:-$ROOT/bin/entire}"
+CHECKPOINT_OUTPUT=""
+
+cleanup() {
+  if [[ -n "$CHECKPOINT_OUTPUT" ]]; then
+    rm -f "$CHECKPOINT_OUTPUT"
+  fi
+}
+trap cleanup EXIT
 
 failures=0
 warnings=0
@@ -86,8 +94,9 @@ if [[ -n "$TARGET_REPO" ]]; then
       warn "Entire settings not found; run entire enable before expecting checkpoints"
     fi
     if [[ -x "$ENTIRE_BIN" ]]; then
-      if (cd "$repo_root" && "$ENTIRE_BIN" checkpoint list >/tmp/entire-replay-doctor-checkpoints.$$ 2>&1); then
-        if grep -q "checkpoints  0" /tmp/entire-replay-doctor-checkpoints.$$; then
+      CHECKPOINT_OUTPUT="$(mktemp "${TMPDIR:-/tmp}/entire-replay-doctor-checkpoints.XXXXXX")"
+      if (cd "$repo_root" && "$ENTIRE_BIN" checkpoint list >"$CHECKPOINT_OUTPUT" 2>&1); then
+        if grep -q "checkpoints  0" "$CHECKPOINT_OUTPUT"; then
           warn "checkpoint list works but found zero checkpoints"
         else
           ok "checkpoint list works"
@@ -95,7 +104,6 @@ if [[ -n "$TARGET_REPO" ]]; then
       else
         warn "checkpoint list failed; inspect target repo setup"
       fi
-      rm -f /tmp/entire-replay-doctor-checkpoints.$$
     fi
   fi
 fi

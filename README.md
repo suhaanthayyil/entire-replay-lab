@@ -96,6 +96,12 @@ Check your machine before a live replay:
 ./scripts/doctor.sh /path/to/entire-enabled/repo
 ```
 
+Run the full local smoke check:
+
+```bash
+./scripts/smoke.sh /path/to/entire-enabled/repo
+```
+
 ## Example Output
 
 ```text
@@ -146,10 +152,12 @@ It makes agent adoption measurable using the team's own historical work.
 
 ```text
 docs/
+  ACCEPTANCE.md        Evidence checklist for build, patch, doctor, and live use
   ARCHITECTURE.md      How replay data flows through Entire
   DEMO.md              CEO/demo script and commands
   FAQ.md               Common setup and safety questions
   JSON_SCHEMA.md       Stable v1 result shape
+  PRODUCT_BRIEF.md     Pain, solution, audience, and demo hook
   ROADMAP.md           MVP, product path, and open questions
   TESTING.md           Validation levels and live-test commands
 examples/
@@ -167,6 +175,7 @@ scripts/
   demo-commands.sh     Print commands for a real Entire-enabled repo
   doctor.sh            Preflight local tools, agents, binary, and target repo
   refresh-patch.sh     Regenerate the patch from a local CLI checkout
+  smoke.sh             Run repo verify, build, doctor, and patch tests
   verify-repo.sh       Validate docs and JSON examples
 ```
 

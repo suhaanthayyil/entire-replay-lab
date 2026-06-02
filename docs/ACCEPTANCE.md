@@ -1,0 +1,127 @@
+# Acceptance Checklist
+
+Replay Lab is useful only if it can be built, inspected, and tested by someone
+who did not work on the prototype. This checklist maps the expected behavior to
+local evidence.
+
+## Repository Is Self-Contained
+
+Evidence:
+
+```bash
+./scripts/verify-repo.sh
+```
+
+Proves:
+
+- docs and examples exist
+- example JSON parses and has required v1 keys
+- schemas parse
+- patch file exists and includes Replay Lab implementation files
+- scripts pass shell syntax checks
+
+## Patch Applies To A Known CLI Base
+
+Evidence:
+
+```bash
+./scripts/check-patch.sh
+```
+
+Proves:
+
+- a fresh `entireio/cli` clone can check out the known base
+- `patches/entire-replay-lab.patch` applies cleanly
+- the Replay Lab test slice passes in that patched checkout
+
+## Replay Lab Binary Builds
+
+Evidence:
+
+```bash
+./scripts/build-cli.sh
+./bin/entire replay --help
+./bin/entire eval --help
+```
+
+Proves:
+
+- the patched CLI compiles
+- `entire replay` is registered
+- `entire eval` is registered
+
+## Local Machine Is Ready For A Live Replay
+
+Evidence:
+
+```bash
+./scripts/doctor.sh /path/to/entire-enabled/repo
+```
+
+Proves:
+
+- required local tools are installed
+- launchable agents are present or clearly reported missing
+- the built binary has Replay Lab commands
+- the target repo is a git repo
+- Entire settings and checkpoints can be detected
+
+## One-Command Smoke
+
+Evidence:
+
+```bash
+./scripts/smoke.sh /path/to/entire-enabled/repo
+```
+
+Proves the full local happy path:
+
+- repository verification
+- patched CLI build
+- command-surface checks
+- local doctor checks
+- fresh-clone patch test
+
+## Live Replay Acceptance
+
+Use a real checkpoint id from:
+
+```bash
+cd /path/to/entire-enabled/repo
+entire checkpoint list
+```
+
+Then run:
+
+```bash
+/path/to/entire-replay-lab/bin/entire replay checkpoint <checkpoint-id> \
+  --agent claude-code \
+  --test-cmd "<repo test command>" \
+  --keep-worktree
+```
+
+Expected:
+
+- the current worktree remains unchanged
+- replay creates an isolated worktree
+- output includes checkpoint, agent, status, commit range, file metrics, test
+  status, optional semantic similarity, risk, and saved report path
+- saved JSON appears under `.git/entire-replay/runs/`
+
+## Multi-Agent Eval Acceptance
+
+```bash
+/path/to/entire-replay-lab/bin/entire eval run \
+  --from-checkpoints \
+  --limit 3 \
+  --agent claude-code,codex \
+  --test-cmd "<repo test command>"
+```
+
+Expected:
+
+- each selected checkpoint becomes a replay task
+- unsupported or missing agents are skipped clearly
+- agents are ranked by pass rate, file overlap, risk, duration, and tokens when
+  available
+- saved JSON appears under `.git/entire-replay/evals/`
