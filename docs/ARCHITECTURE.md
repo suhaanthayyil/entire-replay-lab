@@ -1,0 +1,89 @@
+# Architecture
+
+Replay Lab is built on top of existing Entire data. It does not introduce a new
+checkpoint format.
+
+## Flow
+
+```mermaid
+flowchart TD
+    A["Entire checkpoint"] --> B["ReplaySpec"]
+    B --> C["Temp git worktree at base commit"]
+    C --> D["Launch coding agent with original prompt"]
+    D --> E["Capture changed files and diff"]
+    E --> F["Optional test command"]
+    E --> G["Optional entire-sem comparison"]
+    F --> H["ReplayRun JSON"]
+    G --> H
+    H --> I["Replay report"]
+    H --> J["Eval ranking"]
+```
+
+## ReplaySpec
+
+The spec is derived from committed checkpoint data:
+
+- checkpoint id
+- session id
+- original prompt
+- target commit
+- base commit, usually the target commit parent
+- files touched
+- original agent and model when available
+- token metadata when available
+
+If `files_touched` is missing, the implementation falls back to `git diff
+--name-only <base> <target>`.
+
+## Agent Execution
+
+Replay Lab supports launchable local agents:
+
+- Claude Code
+- Codex
+- Gemini CLI
+
+Each agent receives only the original user prompt plus a short replay wrapper.
+The wrapper says the task is running in an isolated worktree and should be
+completed normally. It does not reveal the original diff.
+
+## Metrics
+
+Replay Lab compares the produced result to the original checkpoint commit:
+
+- file recall: how many original files were touched by the replay
+- file precision: how much of the replay stayed inside the original file set
+- semantic similarity: optional `entire-sem` entity-change overlap
+- tests: opt-in command status and output summary
+- risk: extra files, security/config/database paths, and missing tests
+- performance: duration and token usage when agent output exposes it
+
+## Storage
+
+Results are saved under the git common directory:
+
+```text
+.git/entire-replay/runs/<run-id>.json
+.git/entire-replay/evals/<eval-id>.json
+```
+
+That keeps eval artifacts local to the repo without adding tracked files.
+
+## Failure Behavior
+
+Replay Lab is intentionally diagnostic:
+
+- missing agent binary fails before creating a replay
+- unsupported agents are skipped in `eval run`
+- agent failures still save partial output and changed files when possible
+- timeouts preserve the timeout cause and partial output
+- large diffs and output are capped and marked as truncated
+- failed reports show concise output with the full data in JSON
+
+## Non-Goals For V1
+
+- No automatic test discovery.
+- No cloud runner.
+- No public benchmark upload.
+- No per-line semantic grading.
+- No attempt to prove the replay is the only valid solution.

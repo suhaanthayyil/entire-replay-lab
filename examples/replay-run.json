@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "rpl_7a1d4c9e",
+  "spec": {
+    "checkpoint_id": "9a91ce5c55f2",
+    "session_id": "019e6ba4",
+    "prompt": "Update validate_token to support issuer checks.",
+    "target_commit": "2f9c481",
+    "base_commit": "a77cd65",
+    "files_touched": [
+      "src/auth.py"
+    ],
+    "original_agent": "codex",
+    "original_model": "gpt-5.5"
+  },
+  "agent": "claude-code",
+  "model": "sonnet",
+  "status": "passed",
+  "started_at": "2026-06-02T17:30:00Z",
+  "finished_at": "2026-06-02T17:32:14Z",
+  "duration_ms": 134000,
+  "changed_files": [
+    "src/auth.py"
+  ],
+  "diff_truncated": false,
+  "test": {
+    "status": "passed",
+    "command": "python3 -m pytest",
+    "duration_ms": 4120
+  },
+  "metrics": {
+    "file_precision": 100,
+    "file_recall": 100,
+    "file_overlap": 1,
+    "risk_score": 0,
+    "semantic_available": true,
+    "semantic_similarity": 86
+  },
+  "token_usage": {
+    "input_tokens": 42000,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 12000,
+    "output_tokens": 8500
+  }
+}

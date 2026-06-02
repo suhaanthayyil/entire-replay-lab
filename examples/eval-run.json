@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "evl_a12c0f44",
+  "started_at": "2026-06-02T17:30:00Z",
+  "finished_at": "2026-06-02T17:41:30Z",
+  "agents": [
+    "claude-code",
+    "codex"
+  ],
+  "summaries": [
+    {
+      "agent": "claude-code",
+      "runs": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pass_rate": 100,
+      "avg_file_recall": 92,
+      "avg_file_precision": 88,
+      "avg_semantic_similarity": 81,
+      "semantic_runs": 3,
+      "avg_duration_ms": 134000,
+      "risk_score": 1,
+      "input_tokens": 48000,
+      "output_tokens": 9000
+    },
+    {
+      "agent": "codex",
+      "runs": 3,
+      "passed": 2,
+      "failed": 1,
+      "skipped": 0,
+      "pass_rate": 67,
+      "avg_file_recall": 80,
+      "avg_file_precision": 91,
+      "avg_semantic_similarity": 74,
+      "semantic_runs": 3,
+      "avg_duration_ms": 101000,
+      "risk_score": 3,
+      "input_tokens": 35000,
+      "output_tokens": 7000
+    }
+  ],
+  "runs": []
+}
