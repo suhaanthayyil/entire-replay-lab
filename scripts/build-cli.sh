@@ -19,8 +19,15 @@ else
   else
     git -C "$CLI_DIR" fetch origin --tags
   fi
-  git -C "$CLI_DIR" checkout --detach "$ENTIRE_CLI_REF"
-  git -C "$CLI_DIR" reset --hard "$ENTIRE_CLI_REF" >/dev/null
+  if git -C "$CLI_DIR" rev-parse --verify --quiet "$ENTIRE_CLI_REF^{commit}" >/dev/null; then
+    CHECKOUT_REF="$ENTIRE_CLI_REF"
+  else
+    git -C "$CLI_DIR" fetch origin "$ENTIRE_CLI_REF"
+    CHECKOUT_REF="FETCH_HEAD"
+  fi
+  git -C "$CLI_DIR" checkout --detach "$CHECKOUT_REF"
+  git -C "$CLI_DIR" reset --hard "$CHECKOUT_REF" >/dev/null
+  git -C "$CLI_DIR" clean -fd >/dev/null
   if [[ -f "$ENTIRE_REPLAY_PATCH" ]]; then
     git -C "$CLI_DIR" apply --check "$ENTIRE_REPLAY_PATCH"
     git -C "$CLI_DIR" apply "$ENTIRE_REPLAY_PATCH"

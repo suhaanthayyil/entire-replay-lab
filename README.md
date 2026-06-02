@@ -155,7 +155,10 @@ patches/
   entire-replay-lab.patch
 scripts/
   build-cli.sh         Build the Replay Lab CLI branch
+  check-patch.sh       Apply the patch to a fresh CLI clone and run Replay tests
+  clean.sh             Remove generated build artifacts
   demo-commands.sh     Print commands for a real Entire-enabled repo
+  refresh-patch.sh     Regenerate the patch from a local CLI checkout
   verify-repo.sh       Validate docs and JSON examples
 ```
 

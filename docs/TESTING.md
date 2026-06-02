@@ -49,6 +49,26 @@ ENTIRE_REPLAY_PATCH=/path/to/replay.patch \
 ./scripts/build-cli.sh
 ```
 
+## Patch Validation
+
+Run the patch against a fresh temp clone and execute the Replay Lab test slice:
+
+```bash
+./scripts/check-patch.sh
+```
+
+Refresh the patch from a local CLI checkout after changing the implementation:
+
+```bash
+ENTIRE_CLI_SOURCE=/Users/suhaan/Documents/Coding/cli-replay-lab ./scripts/refresh-patch.sh
+```
+
+Remove generated binaries and temp clones:
+
+```bash
+./scripts/clean.sh
+```
+
 ## Live Validation
 
 Use a repo that already has Entire checkpoints:
