@@ -1,0 +1,22 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Verify repo docs and examples
+        run: ./scripts/verify-repo.sh
+      - name: Shell syntax check
+        run: bash -n scripts/*.sh
+      - name: Build patched Entire CLI
+        run: ./scripts/build-cli.sh

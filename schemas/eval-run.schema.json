@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suhaanthayyil/entire-replay-lab/schemas/eval-run.schema.json",
+  "title": "ReplayEvalRun",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "agents",
+    "summaries",
+    "runs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "finished_at": {
+      "type": "string"
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summaries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/agent_summary"
+      }
+    },
+    "runs": {
+      "type": "array"
+    },
+    "result_path": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "agent_summary": {
+      "type": "object",
+      "required": [
+        "agent",
+        "runs",
+        "passed",
+        "failed",
+        "skipped",
+        "pass_rate",
+        "avg_file_recall",
+        "avg_file_precision",
+        "avg_duration_ms",
+        "risk_score"
+      ],
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pass_rate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "avg_file_recall": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "avg_file_precision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "avg_semantic_similarity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "semantic_runs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "avg_duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "risk_score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

@@ -3,6 +3,14 @@
 Replay Lab is built on top of existing Entire data. It does not introduce a new
 checkpoint format.
 
+This standalone repo carries the prototype as a patch against a known Entire CLI
+base commit. That keeps the project reproducible before it is merged upstream:
+
+```text
+entireio/cli@e858fb537e70b8008a10f712cb73588cb67aacf2
+patches/entire-replay-lab.patch
+```
+
 ## Flow
 
 ```mermaid

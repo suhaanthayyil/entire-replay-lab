@@ -34,10 +34,12 @@ repo context to a public eval dataset.
 
 This repo is the product and demo home for the prototype.
 
-The runnable implementation currently lives in an Entire CLI branch:
+The runnable implementation is captured in `patches/entire-replay-lab.patch`.
+The build script applies it to a known Entire CLI base commit and then builds a
+local `entire` binary.
 
-- CLI branch: `codex/entire-replay-lab`
-- Local checkout used for validation: `/Users/suhaan/Documents/Coding/cli-replay-lab`
+- Default base: `entireio/cli@e858fb537e70b8008a10f712cb73588cb67aacf2`
+- Patch: `patches/entire-replay-lab.patch`
 - Commands added there: `entire replay` and `entire eval`
 
 ## Quick Start
@@ -48,6 +50,15 @@ Build the Replay Lab-enabled Entire CLI:
 git clone https://github.com/suhaanthayyil/entire-replay-lab.git
 cd entire-replay-lab
 ./scripts/build-cli.sh
+```
+
+By default the script clones `entireio/cli`, checks out the tested base commit,
+applies `patches/entire-replay-lab.patch`, and builds `bin/entire`.
+
+To build from a local CLI checkout that already has Replay Lab applied:
+
+```bash
+ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab ./scripts/build-cli.sh
 ```
 
 Then run it inside a repo that already has Entire checkpoints:
@@ -133,9 +144,15 @@ docs/
   DEMO.md              CEO/demo script and commands
   JSON_SCHEMA.md       Stable v1 result shape
   ROADMAP.md           MVP, product path, and open questions
+  TESTING.md           Validation levels and live-test commands
 examples/
   replay-run.json      Example checkpoint replay result
   eval-run.json        Example multi-agent eval result
+schemas/
+  replay-run.schema.json
+  eval-run.schema.json
+patches/
+  entire-replay-lab.patch
 scripts/
   build-cli.sh         Build the Replay Lab CLI branch
   demo-commands.sh     Print commands for a real Entire-enabled repo

@@ -2,6 +2,13 @@
 
 The prototype writes stable, additive JSON with `schema_version: 1`.
 
+Machine-readable schema files live in:
+
+```text
+schemas/replay-run.schema.json
+schemas/eval-run.schema.json
+```
+
 ## ReplayRun
 
 ```json

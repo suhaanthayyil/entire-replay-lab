@@ -1,0 +1,2847 @@
+diff --git a/README.md b/README.md
+index 3c4c62e5..4bd339ab 100644
+--- a/README.md
++++ b/README.md
+@@ -242,6 +242,8 @@ go test -tags=integration ./cmd/entire/cli/integration_test -run TestLogin
+ | `entire disable` | Remove Entire hooks from repository                                                               |
+ | `entire doctor`  | Fix or clean up stuck sessions                                                                    |
+ | `entire enable`  | Enable Entire in your repository                                                                  |
++| `entire replay`  | Replay checkpoint tasks in isolated worktrees                                                     |
++| `entire eval`    | Run private agent evals from Entire checkpoints                                                   |
+ | `entire checkpoint`        | List, explain, rewind, and search checkpoints                                           |
+ | `entire checkpoint explain` | Explain a session, commit, or checkpoint                                               |
+ | `entire checkpoint rewind` | Rewind to a previous checkpoint                                                         |
+@@ -253,6 +255,18 @@ go test -tags=integration ./cmd/entire/cli/integration_test -run TestLogin
+ | `entire doctor trace` | Show hook performance traces                                                                 |
+ | `entire version` | Show Entire CLI version                                                                           |
+ 
++`entire replay checkpoint <id>` turns a real checkpoint into a private
++agent-eval task. Entire checks out the checkpoint's parent commit in an
++isolated temp worktree, runs the original prompt with the selected launchable
++agent, then compares the result to the original commit by changed files,
++optional tests, risk signals, and optional `entire-sem` semantic similarity.
++Replay and eval JSON is saved under the repository's git common directory, not
++tracked in the working tree. Use `entire replay report <run-id>` to revisit one
++run and `entire eval run --from-checkpoints --agent claude-code,codex` to
++compare agents across recent checkpoint tasks. Eval reports include an agent
++ranking by pass rate, file overlap, semantic match, risk, duration, and token
++usage when available.
++
+ ### `entire enable` Flags
+ 
+ | Flag                                        | Description                                                                                                       |
+diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
+new file mode 100644
+index 00000000..90100c0b
+--- /dev/null
++++ b/cmd/entire/cli/replay.go
+@@ -0,0 +1,1760 @@
++package cli
++
++import (
++	"bytes"
++	"context"
++	"crypto/rand"
++	"encoding/hex"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"io"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"sort"
++	"strings"
++	"time"
++
++	"github.com/entireio/cli/cmd/entire/cli/agent"
++	agenttypes "github.com/entireio/cli/cmd/entire/cli/agent/types"
++	"github.com/entireio/cli/cmd/entire/cli/checkpoint"
++	checkpointid "github.com/entireio/cli/cmd/entire/cli/checkpoint/id"
++	"github.com/entireio/cli/cmd/entire/cli/paths"
++	"github.com/entireio/cli/cmd/entire/cli/session"
++	"github.com/entireio/cli/cmd/entire/cli/stringutil"
++	"github.com/entireio/cli/cmd/entire/cli/trailers"
++	"github.com/spf13/cobra"
++)
++
++type replayCheckpointOptions struct {
++	Agent        string
++	Model        string
++	TestCommand  string
++	KeepWorktree bool
++	JSON         bool
++	Timeout      time.Duration
++}
++
++type replayEvalOptions struct {
++	Checkpoints     []string
++	FromCheckpoints bool
++	Limit           int
++	Agents          []string
++	Model           string
++	TestCommand     string
++	KeepWorktrees   bool
++	JSON            bool
++	Timeout         time.Duration
++}
++
++type replayReportOptions struct {
++	JSON bool
++}
++
++type ReplaySpec struct {
++	CheckpointID  string            `json:"checkpoint_id"`
++	SessionID     string            `json:"session_id,omitempty"`
++	Prompt        string            `json:"prompt"`
++	TargetCommit  string            `json:"target_commit"`
++	BaseCommit    string            `json:"base_commit"`
++	FilesTouched  []string          `json:"files_touched"`
++	OriginalAgent string            `json:"original_agent,omitempty"`
++	OriginalModel string            `json:"original_model,omitempty"`
++	TokenUsage    *agent.TokenUsage `json:"token_usage,omitempty"`
++}
++
++type ReplayRun struct {
++	SchemaVersion   int               `json:"schema_version,omitempty"`
++	ID              string            `json:"id"`
++	Spec            ReplaySpec        `json:"spec"`
++	Agent           string            `json:"agent"`
++	Model           string            `json:"model,omitempty"`
++	Status          string            `json:"status"`
++	StartedAt       time.Time         `json:"started_at"`
++	FinishedAt      time.Time         `json:"finished_at"`
++	DurationMS      int64             `json:"duration_ms"`
++	WorktreePath    string            `json:"worktree_path,omitempty"`
++	ChangedFiles    []string          `json:"changed_files"`
++	Diff            string            `json:"diff,omitempty"`
++	DiffTruncated   bool              `json:"diff_truncated,omitempty"`
++	Test            ReplayTestRun     `json:"test"`
++	Metrics         ReplayMetrics     `json:"metrics"`
++	TokenUsage      *agent.TokenUsage `json:"token_usage,omitempty"`
++	Warnings        []string          `json:"warnings,omitempty"`
++	Error           string            `json:"error,omitempty"`
++	Output          string            `json:"output,omitempty"`
++	OutputTruncated bool              `json:"output_truncated,omitempty"`
++	ResultPath      string            `json:"result_path,omitempty"`
++}
++
++type ReplayTestRun struct {
++	Status          string `json:"status"`
++	Command         string `json:"command,omitempty"`
++	ExitCode        int    `json:"exit_code,omitempty"`
++	Output          string `json:"output,omitempty"`
++	OutputTruncated bool   `json:"output_truncated,omitempty"`
++	DurationMS      int64  `json:"duration_ms,omitempty"`
++}
++
++type ReplayMetrics struct {
++	FilePrecision      int      `json:"file_precision"`
++	FileRecall         int      `json:"file_recall"`
++	FileOverlap        int      `json:"file_overlap"`
++	MissingFiles       []string `json:"missing_files,omitempty"`
++	ExtraFiles         []string `json:"extra_files,omitempty"`
++	RiskyFiles         []string `json:"risky_files,omitempty"`
++	MissingTests       bool     `json:"missing_tests,omitempty"`
++	RiskScore          int      `json:"risk_score"`
++	SemanticAvailable  bool     `json:"semantic_available"`
++	SemanticSimilarity int      `json:"semantic_similarity,omitempty"`
++}
++
++type ReplayEvalAgentSummary struct {
++	Agent                 string `json:"agent"`
++	Runs                  int    `json:"runs"`
++	Passed                int    `json:"passed"`
++	Failed                int    `json:"failed"`
++	Skipped               int    `json:"skipped"`
++	PassRate              int    `json:"pass_rate"`
++	AvgFileRecall         int    `json:"avg_file_recall"`
++	AvgFilePrecision      int    `json:"avg_file_precision"`
++	AvgSemanticSimilarity int    `json:"avg_semantic_similarity,omitempty"`
++	SemanticRuns          int    `json:"semantic_runs,omitempty"`
++	AvgDurationMS         int64  `json:"avg_duration_ms"`
++	RiskScore             int    `json:"risk_score"`
++	InputTokens           int    `json:"input_tokens,omitempty"`
++	OutputTokens          int    `json:"output_tokens,omitempty"`
++}
++
++type ReplayEvalRun struct {
++	SchemaVersion int                      `json:"schema_version,omitempty"`
++	ID            string                   `json:"id"`
++	StartedAt     time.Time                `json:"started_at"`
++	FinishedAt    time.Time                `json:"finished_at"`
++	Agents        []string                 `json:"agents"`
++	Summaries     []ReplayEvalAgentSummary `json:"summaries,omitempty"`
++	Runs          []ReplayRun              `json:"runs"`
++	ResultPath    string                   `json:"result_path,omitempty"`
++}
++
++type ReplayRunnerRequest struct {
++	Spec         ReplaySpec
++	Agent        string
++	Model        string
++	Prompt       string
++	WorktreePath string
++}
++
++type ReplayRunnerResult struct {
++	Output     string
++	TokenUsage *agent.TokenUsage
++	Warnings   []string
++}
++
++type ReplayRunner interface {
++	Name() string
++	Run(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error)
++}
++
++type replayRunnerFunc struct {
++	name string
++	fn   func(context.Context, ReplayRunnerRequest) (ReplayRunnerResult, error)
++}
++
++func (f replayRunnerFunc) Name() string { return f.name }
++
++func (f replayRunnerFunc) Run(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	return f.fn(ctx, req)
++}
++
++var (
++	replayRunnerFor       = defaultReplayRunnerFor
++	replayCommandForAgent = defaultReplayCommandForAgent
++)
++
++const (
++	replayAgentGeminiCLI          = "gemini-cli"
++	replayInspectionTimeout       = 2 * time.Minute
++	replayRenderedOutputLineLimit = 20
++	replayResultDiffLimit         = 256 * 1024
++	replayResultOutputLimit       = 64 * 1024
++	replaySchemaVersion           = 1
++	replayStatusFailed            = "failed"
++	replayStatusPassed            = "passed"
++	replayStatusRunning           = "running"
++	replayStatusSkipped           = "skipped"
++	replayTestStatusSkipped       = replayStatusSkipped
++)
++
++func newReplayCmd() *cobra.Command {
++	cmd := &cobra.Command{
++		Use:   "replay",
++		Short: "Replay checkpoint tasks in isolated worktrees",
++		Long:  "Replay historical Entire checkpoints against coding agents and compare their output to the original commit.",
++	}
++	cmd.AddCommand(newReplayCheckpointCmd())
++	cmd.AddCommand(newReplayReportCmd())
++	return cmd
++}
++
++func newReplayCheckpointCmd() *cobra.Command {
++	opts := replayCheckpointOptions{Agent: string(agent.AgentNameClaudeCode)}
++	cmd := &cobra.Command{
++		Use:   "checkpoint <checkpoint-id>",
++		Short: "Replay one checkpoint with one agent",
++		Args:  cobra.ExactArgs(1),
++		RunE: func(cmd *cobra.Command, args []string) error {
++			run, err := runReplayCheckpoint(cmd.Context(), args[0], opts)
++			if err != nil {
++				return err
++			}
++			if opts.JSON {
++				return writeReplayJSON(cmd.OutOrStdout(), run)
++			}
++			renderReplayRun(cmd.OutOrStdout(), run)
++			return nil
++		},
++	}
++	cmd.Flags().StringVar(&opts.Agent, "agent", opts.Agent, "Agent to replay with: claude-code, codex, or gemini")
++	cmd.Flags().StringVar(&opts.Model, "model", "", "Model override passed to the agent when supported")
++	cmd.Flags().StringVar(&opts.TestCommand, "test-cmd", "", "Optional test command to run after replay")
++	cmd.Flags().BoolVar(&opts.KeepWorktree, "keep-worktree", false, "Keep the replay worktree for inspection")
++	cmd.Flags().BoolVar(&opts.JSON, "json", false, "Output replay result as JSON")
++	cmd.Flags().DurationVar(&opts.Timeout, "timeout", 30*time.Minute, "Maximum duration for the replay agent and test command")
++	return cmd
++}
++
++func newReplayReportCmd() *cobra.Command {
++	var opts replayReportOptions
++	cmd := &cobra.Command{
++		Use:   "report <run-id>",
++		Short: "Show a saved checkpoint replay report",
++		Args:  cobra.ExactArgs(1),
++		RunE: func(cmd *cobra.Command, args []string) error {
++			run, err := readReplayRun(cmd.Context(), args[0])
++			if err != nil {
++				return err
++			}
++			if opts.JSON {
++				return writeReplayJSON(cmd.OutOrStdout(), run)
++			}
++			renderReplayRun(cmd.OutOrStdout(), run)
++			return nil
++		},
++	}
++	cmd.Flags().BoolVar(&opts.JSON, "json", false, "Output replay report as JSON")
++	return cmd
++}
++
++func newEvalCmd() *cobra.Command {
++	cmd := &cobra.Command{
++		Use:   "eval",
++		Short: "Run private agent evals from Entire checkpoints",
++		Long:  "Run checkpoint replay tasks across one or more agents and rank the results.",
++	}
++	cmd.AddCommand(newEvalRunCmd())
++	cmd.AddCommand(newEvalReportCmd())
++	return cmd
++}
++
++func newEvalRunCmd() *cobra.Command {
++	opts := replayEvalOptions{Limit: 10, Agents: []string{string(agent.AgentNameClaudeCode)}}
++	cmd := &cobra.Command{
++		Use:   "run",
++		Short: "Run a replay eval",
++		RunE: func(cmd *cobra.Command, _ []string) error {
++			run, err := runReplayEval(cmd.Context(), opts)
++			if err != nil {
++				return err
++			}
++			if opts.JSON {
++				return writeReplayJSON(cmd.OutOrStdout(), run)
++			}
++			renderReplayEval(cmd.OutOrStdout(), run)
++			return nil
++		},
++	}
++	cmd.Flags().StringArrayVar(&opts.Checkpoints, "checkpoint", nil, "Checkpoint ID to include (repeatable)")
++	cmd.Flags().BoolVar(&opts.FromCheckpoints, "from-checkpoints", false, "Use recent committed checkpoints")
++	cmd.Flags().IntVar(&opts.Limit, "limit", opts.Limit, "Maximum checkpoints when using --from-checkpoints")
++	cmd.Flags().StringSliceVar(&opts.Agents, "agent", opts.Agents, "Agents to run, comma-separated or repeated")
++	cmd.Flags().StringVar(&opts.Model, "model", "", "Model override passed to each agent when supported")
++	cmd.Flags().StringVar(&opts.TestCommand, "test-cmd", "", "Optional test command to run after each replay")
++	cmd.Flags().BoolVar(&opts.KeepWorktrees, "keep-worktree", false, "Keep replay worktrees for inspection")
++	cmd.Flags().BoolVar(&opts.JSON, "json", false, "Output eval result as JSON")
++	cmd.Flags().DurationVar(&opts.Timeout, "timeout", 30*time.Minute, "Maximum duration for each replay agent and test command")
++	return cmd
++}
++
++func newEvalReportCmd() *cobra.Command {
++	var opts replayReportOptions
++	cmd := &cobra.Command{
++		Use:   "report <run-id>",
++		Short: "Show a saved replay eval report",
++		Args:  cobra.ExactArgs(1),
++		RunE: func(cmd *cobra.Command, args []string) error {
++			run, err := readReplayEval(cmd.Context(), args[0])
++			if err != nil {
++				return err
++			}
++			if opts.JSON {
++				return writeReplayJSON(cmd.OutOrStdout(), run)
++			}
++			renderReplayEval(cmd.OutOrStdout(), run)
++			return nil
++		},
++	}
++	cmd.Flags().BoolVar(&opts.JSON, "json", false, "Output eval report as JSON")
++	return cmd
++}
++
++func runReplayCheckpoint(ctx context.Context, checkpointRef string, opts replayCheckpointOptions) (*ReplayRun, error) {
++	if err := validateReplayAgentAvailable(opts.Agent); err != nil {
++		return nil, err
++	}
++	spec, err := buildReplaySpec(ctx, checkpointRef)
++	if err != nil {
++		return nil, err
++	}
++	return executeReplay(ctx, spec, opts)
++}
++
++func runReplayEval(ctx context.Context, opts replayEvalOptions) (*ReplayEvalRun, error) {
++	checkpoints := append([]string(nil), opts.Checkpoints...)
++	if opts.FromCheckpoints {
++		recent, err := recentReplayCheckpoints(ctx, opts.Limit)
++		if err != nil {
++			return nil, err
++		}
++		checkpoints = append(checkpoints, recent...)
++	}
++	checkpoints = uniqueNonEmpty(checkpoints)
++	if len(checkpoints) == 0 {
++		return nil, errors.New("no checkpoints selected; pass --checkpoint or --from-checkpoints")
++	}
++	agents := uniqueNonEmpty(opts.Agents)
++	if len(agents) == 0 {
++		return nil, errors.New("no agents selected")
++	}
++
++	eval := &ReplayEvalRun{
++		SchemaVersion: replaySchemaVersion,
++		ID:            newReplayID(),
++		StartedAt:     time.Now().UTC(),
++		Agents:        agents,
++	}
++	for _, cp := range checkpoints {
++		spec, err := buildReplaySpec(ctx, cp)
++		if err != nil {
++			now := time.Now().UTC()
++			eval.Runs = append(eval.Runs, ReplayRun{
++				SchemaVersion: replaySchemaVersion,
++				ID:            newReplayID(),
++				Status:        replayStatusFailed,
++				StartedAt:     now,
++				FinishedAt:    now,
++				Error:         err.Error(),
++				Spec:          ReplaySpec{CheckpointID: cp},
++				Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++			})
++			continue
++		}
++		for _, agentName := range agents {
++			if err := validateReplayAgentAvailable(agentName); err != nil {
++				now := time.Now().UTC()
++				eval.Runs = append(eval.Runs, ReplayRun{
++					SchemaVersion: replaySchemaVersion,
++					ID:            newReplayID(),
++					Spec:          spec,
++					Agent:         agentName,
++					Model:         opts.Model,
++					Status:        replayStatusSkipped,
++					StartedAt:     now,
++					FinishedAt:    now,
++					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Error:         err.Error(),
++				})
++				continue
++			}
++			run, err := executeReplay(ctx, spec, replayCheckpointOptions{
++				Agent:        agentName,
++				Model:        opts.Model,
++				TestCommand:  opts.TestCommand,
++				KeepWorktree: opts.KeepWorktrees,
++				JSON:         opts.JSON,
++				Timeout:      opts.Timeout,
++			})
++			if err != nil {
++				now := time.Now().UTC()
++				run = &ReplayRun{
++					SchemaVersion: replaySchemaVersion,
++					ID:            newReplayID(),
++					Spec:          spec,
++					Agent:         agentName,
++					Model:         opts.Model,
++					Status:        replayStatusFailed,
++					StartedAt:     now,
++					FinishedAt:    now,
++					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Error:         err.Error(),
++				}
++			}
++			eval.Runs = append(eval.Runs, *run)
++		}
++	}
++	sortReplayRuns(eval.Runs)
++	eval.Summaries = summarizeReplayEvalAgents(eval.Runs)
++	eval.FinishedAt = time.Now().UTC()
++	path, err := saveReplayEval(ctx, eval)
++	if err != nil {
++		return nil, err
++	}
++	eval.ResultPath = path
++	return eval, nil
++}
++
++func buildReplaySpec(ctx context.Context, checkpointRef string) (ReplaySpec, error) {
++	repoRoot, err := paths.WorktreeRoot(ctx)
++	if err != nil {
++		return ReplaySpec{}, errors.New("not a git repository")
++	}
++	fullID, targetCommit, err := resolveReplayCheckpointCommit(ctx, repoRoot, checkpointRef)
++	if err != nil {
++		return ReplaySpec{}, err
++	}
++	baseCommit, err := replayCommitParent(ctx, repoRoot, targetCommit)
++	if err != nil {
++		return ReplaySpec{}, err
++	}
++
++	repo, err := openRepository(ctx)
++	if err != nil {
++		return ReplaySpec{}, fmt.Errorf("open repository: %w", err)
++	}
++	defer repo.Close()
++	store := checkpoint.NewGitStore(repo)
++	store.SetBlobFetcher(FetchBlobsByHash)
++
++	cpID, err := checkpointid.NewCheckpointID(fullID)
++	if err != nil {
++		return ReplaySpec{}, fmt.Errorf("parse checkpoint id %s: %w", fullID, err)
++	}
++	summary, err := checkpoint.ReadCommittedCheckpoint(ctx, store, cpID)
++	if err != nil {
++		return ReplaySpec{}, fmt.Errorf("read checkpoint %s: %w", fullID, err)
++	}
++	content, err := checkpoint.ReadLatestSessionContent(ctx, store, cpID, summary)
++	if err != nil {
++		return ReplaySpec{}, fmt.Errorf("read checkpoint prompt %s: %w", fullID, err)
++	}
++	prompt := strings.TrimSpace(content.Prompts)
++	if prompt == "" && content.Metadata.ReviewPrompt != "" {
++		prompt = strings.TrimSpace(content.Metadata.ReviewPrompt)
++	}
++	if prompt == "" {
++		prompt = replayPromptFromTranscript(content.Transcript, content.Metadata.Agent)
++	}
++	if prompt == "" && content.Metadata.Summary != nil {
++		prompt = strings.TrimSpace(content.Metadata.Summary.Intent)
++	}
++	if prompt == "" {
++		return ReplaySpec{}, fmt.Errorf("checkpoint %s has no replayable prompt", fullID)
++	}
++
++	files := normalizeReplayPaths(summary.FilesTouched)
++	if len(files) == 0 {
++		files = normalizeReplayPaths(content.Metadata.FilesTouched)
++	}
++	if len(files) == 0 {
++		files, err = replayFilesChangedBetween(ctx, repoRoot, baseCommit, targetCommit)
++		if err != nil {
++			return ReplaySpec{}, fmt.Errorf("resolve checkpoint changed files: %w", err)
++		}
++	}
++	return ReplaySpec{
++		CheckpointID:  fullID,
++		SessionID:     content.Metadata.SessionID,
++		Prompt:        prompt,
++		TargetCommit:  targetCommit,
++		BaseCommit:    baseCommit,
++		FilesTouched:  files,
++		OriginalAgent: string(content.Metadata.Agent),
++		OriginalModel: content.Metadata.Model,
++		TokenUsage:    content.Metadata.TokenUsage,
++	}, nil
++}
++
++func replayPromptFromTranscript(transcript []byte, agentType agenttypes.AgentType) string {
++	prompts := extractPromptsFromTranscript(transcript, agentType)
++	if len(prompts) == 0 {
++		return ""
++	}
++	return strings.TrimSpace(strings.Join(prompts, "\n\n"))
++}
++
++func executeReplay(ctx context.Context, spec ReplaySpec, opts replayCheckpointOptions) (*ReplayRun, error) {
++	repoRoot, err := paths.WorktreeRoot(ctx)
++	if err != nil {
++		return nil, errors.New("not a git repository")
++	}
++	runner := replayRunnerFor(opts.Agent)
++	if runner == nil {
++		return nil, fmt.Errorf("agent %q is not launchable for replay yet", opts.Agent)
++	}
++	runCtx := ctx
++	cancel := func() {}
++	if opts.Timeout > 0 {
++		runCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
++	}
++	defer cancel()
++
++	run := &ReplayRun{
++		SchemaVersion: replaySchemaVersion,
++		ID:            newReplayID(),
++		Spec:          spec,
++		Agent:         runner.Name(),
++		Model:         opts.Model,
++		Status:        replayStatusRunning,
++		StartedAt:     time.Now().UTC(),
++		Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++	}
++
++	worktree, err := createReplayWorktree(runCtx, repoRoot, spec.BaseCommit)
++	if err != nil {
++		return nil, err
++	}
++
++	result, runnerErr := runner.Run(runCtx, ReplayRunnerRequest{
++		Spec:         spec,
++		Agent:        runner.Name(),
++		Model:        opts.Model,
++		Prompt:       replayPrompt(spec),
++		WorktreePath: worktree,
++	})
++	run.Output, run.OutputTruncated = truncateReplayOutput(result.Output)
++	run.TokenUsage = result.TokenUsage
++	run.Warnings = append(run.Warnings, result.Warnings...)
++	if runnerErr != nil {
++		run.Status = replayStatusFailed
++		run.Error = runnerErr.Error()
++	} else {
++		run.Status = replayStatusPassed
++	}
++
++	inspectionCtx, inspectionCancel := context.WithTimeout(ctx, replayInspectionTimeout)
++	defer inspectionCancel()
++	files, diff, diffErr := replayChangedFilesAndDiff(inspectionCtx, worktree, spec.BaseCommit)
++	if diffErr != nil {
++		run.Warnings = append(run.Warnings, fmt.Sprintf("failed to read replay diff: %v", diffErr))
++	} else {
++		run.ChangedFiles = files
++		run.Diff, run.DiffTruncated = truncateReplayDiff(diff)
++	}
++	run.Metrics = replayMetrics(inspectionCtx, repoRoot, worktree, spec, run.ChangedFiles)
++
++	if opts.TestCommand != "" {
++		if runnerErr == nil {
++			run.Test = runReplayTestCommand(runCtx, worktree, opts.TestCommand)
++			if run.Test.Status == replayStatusFailed && run.Status == replayStatusPassed {
++				run.Status = replayStatusFailed
++			}
++		} else {
++			run.Warnings = append(run.Warnings, "test command skipped because replay agent failed")
++		}
++	}
++
++	run.FinishedAt = time.Now().UTC()
++	run.DurationMS = run.FinishedAt.Sub(run.StartedAt).Milliseconds()
++	if opts.KeepWorktree {
++		run.WorktreePath = worktree
++	} else if err := removeReplayWorktree(context.Background(), repoRoot, worktree); err != nil {
++		run.Warnings = append(run.Warnings, fmt.Sprintf("failed to remove replay worktree: %v", err))
++	}
++	path, err := saveReplayRun(ctx, run)
++	if err != nil {
++		return nil, err
++	}
++	run.ResultPath = path
++	return run, nil
++}
++
++func defaultReplayRunnerFor(agentName string) *replayRunnerFunc {
++	switch agentName {
++	case string(agent.AgentNameClaudeCode):
++		return &replayRunnerFunc{name: agentName, fn: runClaudeReplay}
++	case string(agent.AgentNameCodex):
++		return &replayRunnerFunc{name: agentName, fn: runCodexReplay}
++	case string(agent.AgentNameGemini), replayAgentGeminiCLI:
++		return &replayRunnerFunc{name: string(agent.AgentNameGemini), fn: runGeminiReplay}
++	default:
++		return nil
++	}
++}
++
++func validateReplayAgentAvailable(agentName string) error {
++	if replayRunnerFor(agentName) == nil {
++		return fmt.Errorf("agent %q is not launchable for replay yet", agentName)
++	}
++	command := replayCommandForAgent(agentName)
++	if command == "" {
++		return nil
++	}
++	if _, err := exec.LookPath(command); err != nil {
++		return fmt.Errorf("agent %q requires %q on PATH: %w", agentName, command, err)
++	}
++	return nil
++}
++
++func defaultReplayCommandForAgent(agentName string) string {
++	switch agentName {
++	case string(agent.AgentNameClaudeCode):
++		return "claude"
++	case string(agent.AgentNameCodex):
++		return string(agent.AgentNameCodex)
++	case string(agent.AgentNameGemini), replayAgentGeminiCLI:
++		return string(agent.AgentNameGemini)
++	default:
++		return ""
++	}
++}
++
++func runClaudeReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	args := []string{"-p", req.Prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits"}
++	if req.Model != "" {
++		args = append(args, "--model", req.Model)
++	}
++	return runReplayProcess(ctx, req.WorktreePath, "claude", args, nil)
++}
++
++func runCodexReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	args := []string{"exec", "--skip-git-repo-check", "--json", "--sandbox", "workspace-write"}
++	if req.Model != "" {
++		args = append(args, "--model", req.Model)
++	}
++	args = append(args, "-")
++	return runReplayProcess(ctx, req.WorktreePath, string(agent.AgentNameCodex), args, strings.NewReader(req.Prompt))
++}
++
++func runGeminiReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	args := []string{"-p", " "}
++	if req.Model != "" {
++		args = append(args, "--model", req.Model)
++	}
++	return runReplayProcess(ctx, req.WorktreePath, string(agent.AgentNameGemini), args, strings.NewReader(req.Prompt))
++}
++
++func runReplayProcess(ctx context.Context, dir, name string, args []string, stdin io.Reader) (ReplayRunnerResult, error) {
++	cmd := exec.CommandContext(ctx, name, args...)
++	cmd.Dir = dir
++	cmd.Env = replayAgentEnv(os.Environ())
++	cmd.Stdin = stdin
++	var stdout, stderr bytes.Buffer
++	cmd.Stdout = &stdout
++	cmd.Stderr = &stderr
++	err := cmd.Run()
++	stdoutText := stdout.String()
++	output := strings.TrimSpace(stdoutText)
++	if stderr.Len() > 0 {
++		if output != "" {
++			output += "\n"
++		}
++		output += strings.TrimSpace(stderr.String())
++	}
++	if err != nil {
++		if ctxErr := ctx.Err(); ctxErr != nil {
++			return ReplayRunnerResult{Output: output, TokenUsage: extractReplayTokenUsage(stdoutText)}, fmt.Errorf("%s replay failed: %w (process: %w)", name, ctxErr, err)
++		}
++		return ReplayRunnerResult{Output: output, TokenUsage: extractReplayTokenUsage(stdoutText)}, fmt.Errorf("%s replay failed: %w", name, err)
++	}
++	return ReplayRunnerResult{Output: output, TokenUsage: extractReplayTokenUsage(stdoutText)}, nil
++}
++
++func replayAgentEnv(env []string) []string {
++	filtered := agent.StripGitEnv(env)
++	out := filtered[:0]
++	for _, item := range filtered {
++		switch {
++		case item == "GIT_CONFIG_COUNT" || strings.HasPrefix(item, "GIT_CONFIG_COUNT="):
++			continue
++		case strings.HasPrefix(item, "GIT_CONFIG_KEY_"):
++			continue
++		case strings.HasPrefix(item, "GIT_CONFIG_VALUE_"):
++			continue
++		}
++		out = append(out, item)
++	}
++	return append(out,
++		"ENTIRE_REPLAY=1",
++		"GIT_CONFIG_COUNT=1",
++		"GIT_CONFIG_KEY_0=core.hooksPath",
++		"GIT_CONFIG_VALUE_0=/dev/null",
++	)
++}
++
++func extractReplayTokenUsage(output string) *agent.TokenUsage {
++	var usage *agent.TokenUsage
++	for _, line := range strings.Split(output, "\n") {
++		line = strings.TrimSpace(line)
++		if line == "" || !strings.HasPrefix(line, "{") {
++			continue
++		}
++		var env map[string]any
++		if err := json.Unmarshal([]byte(line), &env); err != nil {
++			continue
++		}
++		eventType, ok := env["type"].(string)
++		if !ok {
++			continue
++		}
++		switch eventType {
++		case "result", "turn.completed":
++			if parsed := replayTokenUsageFromAny(env["usage"]); parsed != nil {
++				usage = parsed
++			}
++		}
++	}
++	return usage
++}
++
++func replayTokenUsageFromAny(value any) *agent.TokenUsage {
++	raw, ok := value.(map[string]any)
++	if !ok {
++		return nil
++	}
++	input := replayIntField(raw, "input_tokens")
++	cacheCreate := replayIntField(raw, "cache_creation_input_tokens", "cache_creation_tokens")
++	cacheRead := replayIntField(raw, "cache_read_input_tokens", "cached_input_tokens", "cache_read_tokens")
++	output := replayIntField(raw, "output_tokens")
++	if input == 0 && cacheCreate == 0 && cacheRead == 0 && output == 0 {
++		return nil
++	}
++	return &agent.TokenUsage{
++		InputTokens:         input,
++		CacheCreationTokens: cacheCreate,
++		CacheReadTokens:     cacheRead,
++		OutputTokens:        output,
++		APICallCount:        1,
++	}
++}
++
++func replayIntField(raw map[string]any, keys ...string) int {
++	for _, key := range keys {
++		switch value := raw[key].(type) {
++		case float64:
++			return int(value)
++		case int:
++			return value
++		case json.Number:
++			if n, err := value.Int64(); err == nil {
++				return int(n)
++			}
++		}
++	}
++	return 0
++}
++
++func replayPrompt(spec ReplaySpec) string {
++	return strings.TrimSpace(fmt.Sprintf(`You are replaying a historical coding task in an isolated git worktree.
++
++Original user prompt:
++%s
++
++Complete the task normally in this worktree. Do not inspect Entire checkpoint metadata, git history, or the original target commit to find the previous answer. Make the necessary code changes and stop when done. Do not commit unless the original prompt explicitly asks for a commit.`, spec.Prompt))
++}
++
++func resolveReplayCheckpointCommit(ctx context.Context, repoRoot, checkpointRef string) (string, string, error) {
++	out, err := replayGit(ctx, repoRoot, "rev-list", "--all")
++	if err != nil {
++		return "", "", fmt.Errorf("list commits: %w", err)
++	}
++	type match struct {
++		cpID string
++		sha  string
++	}
++	var matches []match
++	seen := map[string]struct{}{}
++	for _, sha := range strings.Fields(out) {
++		msg, msgErr := replayGit(ctx, repoRoot, "show", "-s", "--format=%B", sha)
++		if msgErr != nil {
++			continue
++		}
++		for _, cpID := range trailers.ParseAllCheckpoints(msg) {
++			if strings.HasPrefix(cpID.String(), checkpointRef) {
++				key := cpID.String() + ":" + sha
++				if _, ok := seen[key]; ok {
++					continue
++				}
++				seen[key] = struct{}{}
++				matches = append(matches, match{cpID: cpID.String(), sha: sha})
++			}
++		}
++	}
++	if len(matches) == 0 {
++		return "", "", fmt.Errorf("checkpoint %s was not found in commit trailers", checkpointRef)
++	}
++	if len(matches) > 1 {
++		var labels []string
++		for _, m := range matches {
++			labels = append(labels, m.cpID+"@"+shortReplaySHA(m.sha))
++		}
++		sort.Strings(labels)
++		return "", "", fmt.Errorf("checkpoint %s is ambiguous: %s", checkpointRef, strings.Join(labels, ", "))
++	}
++	return matches[0].cpID, matches[0].sha, nil
++}
++
++func replayCommitParent(ctx context.Context, repoRoot, targetCommit string) (string, error) {
++	parent, err := replayGit(ctx, repoRoot, "rev-parse", "--verify", targetCommit+"^")
++	if err != nil {
++		return "", fmt.Errorf("checkpoint target commit %s has no parent; replay needs a committed base", shortReplaySHA(targetCommit))
++	}
++	return parent, nil
++}
++
++func createReplayWorktree(ctx context.Context, repoRoot, baseCommit string) (string, error) {
++	dir, err := os.MkdirTemp("", "entire-replay-*")
++	if err != nil {
++		return "", fmt.Errorf("create replay temp dir: %w", err)
++	}
++	if err := os.Remove(dir); err != nil {
++		return "", fmt.Errorf("prepare replay temp dir: %w", err)
++	}
++	if _, err := replayGit(ctx, repoRoot, "worktree", "add", "--detach", dir, baseCommit); err != nil {
++		_ = os.RemoveAll(dir)
++		return "", fmt.Errorf("create replay worktree: %w", err)
++	}
++	return dir, nil
++}
++
++func removeReplayWorktree(ctx context.Context, repoRoot, worktree string) error {
++	if _, err := replayGit(ctx, repoRoot, "worktree", "remove", "--force", worktree); err != nil {
++		_ = os.RemoveAll(worktree)
++		return err
++	}
++	return nil
++}
++
++func replayChangedFilesAndDiff(ctx context.Context, worktree, baseCommit string) ([]string, string, error) {
++	if _, err := replayGit(ctx, worktree, "add", "-N", "."); err != nil {
++		return nil, "", fmt.Errorf("index replay untracked files: %w", err)
++	}
++	modified, err := replayGit(ctx, worktree, "diff", "--name-only", baseCommit)
++	if err != nil {
++		return nil, "", err
++	}
++	files := normalizeReplayPaths(strings.Fields(modified))
++	diff, err := replayGit(ctx, worktree, "diff", "--binary", baseCommit)
++	if err != nil {
++		return files, "", err
++	}
++	return files, diff, nil
++}
++
++func replayFilesChangedBetween(ctx context.Context, repoRoot, baseCommit, targetCommit string) ([]string, error) {
++	out, err := replayGit(ctx, repoRoot, "diff", "--name-only", baseCommit, targetCommit, "--")
++	if err != nil {
++		return nil, err
++	}
++	return normalizeReplayPaths(strings.Fields(out)), nil
++}
++
++func runReplayTestCommand(ctx context.Context, worktree, command string) ReplayTestRun {
++	start := time.Now()
++	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", command)
++	cmd.Dir = worktree
++	var output bytes.Buffer
++	cmd.Stdout = &output
++	cmd.Stderr = &output
++	err := cmd.Run()
++	truncatedOutput, outputTruncated := truncateReplayOutput(output.String())
++	result := ReplayTestRun{
++		Status:          replayStatusPassed,
++		Command:         command,
++		Output:          truncatedOutput,
++		OutputTruncated: outputTruncated,
++		DurationMS:      time.Since(start).Milliseconds(),
++	}
++	if err != nil {
++		result.Status = replayStatusFailed
++		var exitErr *exec.ExitError
++		if errors.As(err, &exitErr) {
++			result.ExitCode = exitErr.ExitCode()
++		} else {
++			result.ExitCode = -1
++		}
++	}
++	return result
++}
++
++func replayMetrics(ctx context.Context, repoRoot, worktree string, spec ReplaySpec, changedFiles []string) ReplayMetrics {
++	original := normalizeReplayPaths(spec.FilesTouched)
++	produced := normalizeReplayPaths(changedFiles)
++	overlap, missing, extra := replayFileSets(original, produced)
++	metrics := ReplayMetrics{
++		FileOverlap:   len(overlap),
++		MissingFiles:  missing,
++		ExtraFiles:    extra,
++		RiskyFiles:    riskyReplayFiles(produced),
++		FilePrecision: percent(len(overlap), len(produced)),
++		FileRecall:    percent(len(overlap), len(original)),
++	}
++	metrics.RiskScore = len(metrics.ExtraFiles) + len(metrics.RiskyFiles)
++	metrics.MissingTests = sourceChangedWithoutTests(produced)
++	if metrics.MissingTests {
++		metrics.RiskScore++
++	}
++	if score, ok := replaySemanticSimilarity(ctx, repoRoot, worktree, spec); ok {
++		metrics.SemanticAvailable = true
++		metrics.SemanticSimilarity = score
++	}
++	return metrics
++}
++
++func replaySemanticSimilarity(ctx context.Context, repoRoot, worktree string, spec ReplaySpec) (int, bool) {
++	if _, err := exec.LookPath("entire-sem"); err != nil {
++		return 0, false
++	}
++	gold, err := replaySemanticKeys(ctx, repoRoot, spec.BaseCommit, spec.TargetCommit)
++	if err != nil {
++		return 0, false
++	}
++	replayHead, cleanup, err := commitReplayResultForSemantic(ctx, worktree)
++	if err != nil {
++		return 0, false
++	}
++	replayed, err := replaySemanticKeys(ctx, worktree, spec.BaseCommit, replayHead)
++	if err != nil {
++		cleanupReplaySemanticCommit(cleanup)
++		return 0, false
++	}
++	score := jaccardPercent(gold, replayed)
++	if !cleanupReplaySemanticCommit(cleanup) {
++		return 0, false
++	}
++	return score, true
++}
++
++func cleanupReplaySemanticCommit(cleanup func() error) bool {
++	return cleanup() == nil
++}
++
++func commitReplayResultForSemantic(ctx context.Context, worktree string) (string, func() error, error) {
++	if _, err := replayGit(ctx, worktree, "diff", "--quiet"); err == nil {
++		head, headErr := replayGit(ctx, worktree, "rev-parse", "HEAD")
++		if headErr != nil {
++			return "", func() error { return nil }, headErr
++		}
++		return head, func() error { return nil }, nil
++	}
++	if _, err := replayGit(ctx, worktree, "add", "-A"); err != nil {
++		return "", func() error { return nil }, err
++	}
++	if _, err := replayGit(ctx, worktree,
++		"-c", "user.name=Entire Replay",
++		"-c", "user.email=replay@entire.local",
++		"commit", "--no-gpg-sign", "-m", "entire replay result",
++	); err != nil {
++		return "", func() error { return nil }, err
++	}
++	head, err := replayGit(ctx, worktree, "rev-parse", "HEAD")
++	if err != nil {
++		return "", func() error { return nil }, err
++	}
++	cleanup := func() error {
++		if _, err := replayGit(context.Background(), worktree, "reset", "--mixed", "HEAD^"); err != nil {
++			return fmt.Errorf("reset temporary semantic replay commit: %w", err)
++		}
++		return nil
++	}
++	return head, cleanup, nil
++}
++
++func replaySemanticKeys(ctx context.Context, dir, base, head string) (map[string]struct{}, error) {
++	cmd := exec.CommandContext(ctx, "entire-sem", "diff", "--base", base, "--head", head, "--json")
++	cmd.Dir = dir
++	var stderr bytes.Buffer
++	cmd.Stderr = &stderr
++	out, err := cmd.Output()
++	if err != nil {
++		msg := strings.TrimSpace(stderr.String())
++		if msg != "" {
++			return nil, fmt.Errorf("entire-sem: %s", msg)
++		}
++		return nil, fmt.Errorf("run entire-sem: %w", err)
++	}
++	var raw any
++	if err := json.Unmarshal(out, &raw); err != nil {
++		return nil, fmt.Errorf("parse entire-sem json: %w", err)
++	}
++	keys := map[string]struct{}{}
++	collectReplaySemanticKeys(raw, keys)
++	return keys, nil
++}
++
++func collectReplaySemanticKeys(value any, keys map[string]struct{}) {
++	switch v := value.(type) {
++	case []any:
++		for _, item := range v {
++			collectReplaySemanticKeys(item, keys)
++		}
++	case map[string]any:
++		name := replayStringField(v, "name", "symbol", "new_name")
++		kind := replayStringField(v, "kind", "entity_kind", "node_kind")
++		change := replayStringField(v, "change_type", "change", "type", "status")
++		if name != "" || change != "" {
++			keys[strings.Join([]string{kind, name, change}, ":")] = struct{}{}
++		}
++		for _, child := range v {
++			collectReplaySemanticKeys(child, keys)
++		}
++	}
++}
++
++func replayStringField(m map[string]any, keys ...string) string {
++	for _, key := range keys {
++		if value, ok := m[key].(string); ok {
++			return strings.TrimSpace(value)
++		}
++	}
++	return ""
++}
++
++func saveReplayRun(ctx context.Context, run *ReplayRun) (string, error) {
++	dir, err := replayRunsDir(ctx)
++	if err != nil {
++		return "", err
++	}
++	if run.SchemaVersion == 0 {
++		run.SchemaVersion = replaySchemaVersion
++	}
++	path := filepath.Join(dir, run.ID+".json")
++	run.ResultPath = path
++	return path, writeReplayFile(path, run)
++}
++
++func readReplayRun(ctx context.Context, runID string) (*ReplayRun, error) {
++	dir, err := replayRunsDir(ctx)
++	if err != nil {
++		return nil, err
++	}
++	name := strings.TrimSuffix(filepath.Base(runID), ".json")
++	path := filepath.Join(dir, name+".json")
++	data, err := os.ReadFile(path) //nolint:gosec // runID is filepath.Base'd above
++	if err != nil {
++		return nil, fmt.Errorf("read replay report: %w", err)
++	}
++	var run ReplayRun
++	if err := json.Unmarshal(data, &run); err != nil {
++		return nil, fmt.Errorf("parse replay report: %w", err)
++	}
++	if run.SchemaVersion == 0 {
++		run.SchemaVersion = replaySchemaVersion
++	}
++	run.ResultPath = path
++	return &run, nil
++}
++
++func saveReplayEval(ctx context.Context, run *ReplayEvalRun) (string, error) {
++	dir, err := replayEvalsDir(ctx)
++	if err != nil {
++		return "", err
++	}
++	if run.SchemaVersion == 0 {
++		run.SchemaVersion = replaySchemaVersion
++	}
++	for i := range run.Runs {
++		if run.Runs[i].SchemaVersion == 0 {
++			run.Runs[i].SchemaVersion = replaySchemaVersion
++		}
++	}
++	path := filepath.Join(dir, run.ID+".json")
++	run.ResultPath = path
++	return path, writeReplayFile(path, run)
++}
++
++func readReplayEval(ctx context.Context, runID string) (*ReplayEvalRun, error) {
++	dir, err := replayEvalsDir(ctx)
++	if err != nil {
++		return nil, err
++	}
++	name := strings.TrimSuffix(filepath.Base(runID), ".json")
++	path := filepath.Join(dir, name+".json")
++	data, err := os.ReadFile(path) //nolint:gosec // runID is filepath.Base'd above
++	if err != nil {
++		return nil, fmt.Errorf("read eval report: %w", err)
++	}
++	var run ReplayEvalRun
++	if err := json.Unmarshal(data, &run); err != nil {
++		return nil, fmt.Errorf("parse eval report: %w", err)
++	}
++	if run.SchemaVersion == 0 {
++		run.SchemaVersion = replaySchemaVersion
++	}
++	for i := range run.Runs {
++		if run.Runs[i].SchemaVersion == 0 {
++			run.Runs[i].SchemaVersion = replaySchemaVersion
++		}
++	}
++	run.ResultPath = path
++	return &run, nil
++}
++
++func replayRunsDir(ctx context.Context) (string, error) {
++	commonDir, err := session.GetGitCommonDir(ctx)
++	if err != nil {
++		return "", fmt.Errorf("resolve git common dir: %w", err)
++	}
++	return filepath.Join(commonDir, "entire-replay", "runs"), nil
++}
++
++func replayEvalsDir(ctx context.Context) (string, error) {
++	commonDir, err := session.GetGitCommonDir(ctx)
++	if err != nil {
++		return "", fmt.Errorf("resolve git common dir: %w", err)
++	}
++	return filepath.Join(commonDir, "entire-replay", "evals"), nil
++}
++
++func writeReplayFile(path string, value any) error {
++	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
++		return fmt.Errorf("create replay result dir: %w", err)
++	}
++	data, err := json.MarshalIndent(value, "", "  ")
++	if err != nil {
++		return fmt.Errorf("marshal replay result: %w", err)
++	}
++	data = append(data, '\n')
++	if err := os.WriteFile(path, data, 0o600); err != nil {
++		return fmt.Errorf("write replay result: %w", err)
++	}
++	return nil
++}
++
++func recentReplayCheckpoints(ctx context.Context, limit int) ([]string, error) {
++	repo, err := openRepository(ctx)
++	if err != nil {
++		return nil, err
++	}
++	defer repo.Close()
++	infos, err := checkpoint.NewGitStore(repo).ListCommitted(ctx)
++	if err != nil {
++		return nil, fmt.Errorf("list committed checkpoints: %w", err)
++	}
++	if limit <= 0 || limit > len(infos) {
++		limit = len(infos)
++	}
++	out := make([]string, 0, limit)
++	for i := range limit {
++		out = append(out, infos[i].CheckpointID.String())
++	}
++	return out, nil
++}
++
++func replayFileSets(original, produced []string) (overlap, missing, extra []string) {
++	origSet := make(map[string]struct{}, len(original))
++	prodSet := make(map[string]struct{}, len(produced))
++	for _, file := range original {
++		origSet[file] = struct{}{}
++	}
++	for _, file := range produced {
++		prodSet[file] = struct{}{}
++		if _, ok := origSet[file]; ok {
++			overlap = append(overlap, file)
++		} else {
++			extra = append(extra, file)
++		}
++	}
++	for _, file := range original {
++		if _, ok := prodSet[file]; !ok {
++			missing = append(missing, file)
++		}
++	}
++	sort.Strings(overlap)
++	sort.Strings(missing)
++	sort.Strings(extra)
++	return overlap, missing, extra
++}
++
++func riskyReplayFiles(files []string) []string {
++	var risky []string
++	for _, file := range files {
++		lower := strings.ToLower(file)
++		if strings.Contains(lower, "auth") ||
++			strings.Contains(lower, "token") ||
++			strings.Contains(lower, "secret") ||
++			strings.Contains(lower, "credential") ||
++			strings.Contains(lower, "permission") ||
++			strings.Contains(lower, "security") ||
++			strings.Contains(lower, "payment") ||
++			strings.Contains(lower, "billing") ||
++			strings.Contains(lower, "/db/") ||
++			strings.Contains(lower, "database") ||
++			strings.Contains(lower, "migration") ||
++			strings.Contains(lower, "schema") ||
++			strings.Contains(lower, "policy") ||
++			strings.HasSuffix(lower, ".sql") ||
++			strings.Contains(lower, "config") ||
++			strings.Contains(lower, "infra") ||
++			strings.Contains(lower, "deploy") ||
++			strings.Contains(lower, ".github/workflows/") ||
++			strings.HasSuffix(lower, ".env") ||
++			strings.HasSuffix(lower, ".tf") {
++			risky = append(risky, file)
++		}
++	}
++	sort.Strings(risky)
++	return risky
++}
++
++func sourceChangedWithoutTests(files []string) bool {
++	hasSource := false
++	hasTest := false
++	for _, file := range files {
++		if isReplayTestFile(file) {
++			hasTest = true
++			continue
++		}
++		lower := strings.ToLower(file)
++		if isReplaySourceFile(lower) {
++			hasSource = true
++		}
++	}
++	return hasSource && !hasTest
++}
++
++func isReplayTestFile(path string) bool {
++	normalized := filepath.ToSlash(strings.TrimSpace(path))
++	lowerPath := strings.ToLower(normalized)
++	for _, part := range strings.Split(lowerPath, "/") {
++		switch part {
++		case "__tests__", "spec", "specs", "test", "tests":
++			return true
++		}
++	}
++
++	base := filepath.Base(normalized)
++	ext := filepath.Ext(base)
++	name := strings.TrimSuffix(base, ext)
++	lowerName := strings.ToLower(name)
++	switch {
++	case strings.HasPrefix(lowerName, "test_"),
++		strings.HasPrefix(lowerName, "test-"),
++		strings.HasSuffix(lowerName, "_test"),
++		strings.HasSuffix(lowerName, "-test"),
++		strings.HasSuffix(lowerName, ".test"),
++		strings.HasSuffix(lowerName, ".spec"),
++		strings.HasSuffix(name, "Test"),
++		strings.HasSuffix(name, "Tests"),
++		strings.HasSuffix(name, "Spec"),
++		strings.HasSuffix(name, "Specs"):
++		return true
++	default:
++		return false
++	}
++}
++
++func isReplaySourceFile(lowerPath string) bool {
++	switch filepath.Ext(lowerPath) {
++	case ".bash",
++		".c",
++		".cc",
++		".cpp",
++		".cs",
++		".cue",
++		".cxx",
++		".ex",
++		".exs",
++		".go",
++		".groovy",
++		".h",
++		".hcl",
++		".hpp",
++		".hs",
++		".hxx",
++		".java",
++		".js",
++		".jsx",
++		".kt",
++		".kts",
++		".lua",
++		".mli",
++		".ml",
++		".php",
++		".proto",
++		".py",
++		".rb",
++		".rs",
++		".scala",
++		".sc",
++		".sh",
++		".sql",
++		".swift",
++		".tf",
++		".ts",
++		".tsx":
++		return true
++	default:
++		return false
++	}
++}
++
++func sortReplayRuns(runs []ReplayRun) {
++	sort.SliceStable(runs, func(i, j int) bool {
++		a, b := runs[i], runs[j]
++		if a.Status != b.Status {
++			return a.Status == replayStatusPassed
++		}
++		if a.Test.Status != b.Test.Status {
++			return a.Test.Status == replayStatusPassed
++		}
++		if a.Metrics.FileRecall != b.Metrics.FileRecall {
++			return a.Metrics.FileRecall > b.Metrics.FileRecall
++		}
++		if a.Metrics.FilePrecision != b.Metrics.FilePrecision {
++			return a.Metrics.FilePrecision > b.Metrics.FilePrecision
++		}
++		if a.Metrics.SemanticAvailable != b.Metrics.SemanticAvailable {
++			return a.Metrics.SemanticAvailable
++		}
++		if a.Metrics.SemanticAvailable && a.Metrics.SemanticSimilarity != b.Metrics.SemanticSimilarity {
++			return a.Metrics.SemanticSimilarity > b.Metrics.SemanticSimilarity
++		}
++		if a.Metrics.RiskScore != b.Metrics.RiskScore {
++			return a.Metrics.RiskScore < b.Metrics.RiskScore
++		}
++		aTokens, aHasTokens := replayTokenCount(a.TokenUsage)
++		bTokens, bHasTokens := replayTokenCount(b.TokenUsage)
++		if aHasTokens != bHasTokens {
++			return aHasTokens
++		}
++		if aHasTokens && aTokens != bTokens {
++			return aTokens < bTokens
++		}
++		return a.DurationMS < b.DurationMS
++	})
++}
++
++func summarizeReplayEvalAgents(runs []ReplayRun) []ReplayEvalAgentSummary {
++	type totals struct {
++		summary      ReplayEvalAgentSummary
++		recall       int
++		precision    int
++		semantic     int
++		duration     int64
++		durationRuns int
++		qualityRuns  int
++	}
++	byAgent := make(map[string]*totals)
++	for _, run := range runs {
++		if strings.TrimSpace(run.Agent) == "" {
++			continue
++		}
++		total := byAgent[run.Agent]
++		if total == nil {
++			total = &totals{summary: ReplayEvalAgentSummary{Agent: run.Agent}}
++			byAgent[run.Agent] = total
++		}
++		total.summary.Runs++
++		switch run.Status {
++		case replayStatusPassed:
++			total.summary.Passed++
++		case replayStatusSkipped:
++			total.summary.Skipped++
++		default:
++			total.summary.Failed++
++		}
++		total.qualityRuns++
++		total.recall += run.Metrics.FileRecall
++		total.precision += run.Metrics.FilePrecision
++		if run.Metrics.SemanticAvailable {
++			total.summary.SemanticRuns++
++			total.semantic += run.Metrics.SemanticSimilarity
++		}
++		if run.DurationMS > 0 {
++			total.durationRuns++
++			total.duration += run.DurationMS
++		}
++		total.summary.RiskScore += run.Metrics.RiskScore
++		if run.TokenUsage != nil {
++			total.summary.InputTokens += run.TokenUsage.InputTokens + run.TokenUsage.CacheCreationTokens + run.TokenUsage.CacheReadTokens
++			total.summary.OutputTokens += run.TokenUsage.OutputTokens
++		}
++	}
++
++	summaries := make([]ReplayEvalAgentSummary, 0, len(byAgent))
++	for _, total := range byAgent {
++		summary := total.summary
++		summary.PassRate = percent(summary.Passed, summary.Runs)
++		if total.qualityRuns > 0 {
++			summary.AvgFileRecall = total.recall / total.qualityRuns
++			summary.AvgFilePrecision = total.precision / total.qualityRuns
++		}
++		if summary.SemanticRuns > 0 {
++			summary.AvgSemanticSimilarity = total.semantic / summary.SemanticRuns
++		}
++		if total.durationRuns > 0 {
++			summary.AvgDurationMS = total.duration / int64(total.durationRuns)
++		}
++		summaries = append(summaries, summary)
++	}
++	sortReplayEvalSummaries(summaries)
++	return summaries
++}
++
++func sortReplayEvalSummaries(summaries []ReplayEvalAgentSummary) {
++	sort.SliceStable(summaries, func(i, j int) bool {
++		a, b := summaries[i], summaries[j]
++		if a.PassRate != b.PassRate {
++			return a.PassRate > b.PassRate
++		}
++		if a.AvgFileRecall != b.AvgFileRecall {
++			return a.AvgFileRecall > b.AvgFileRecall
++		}
++		if a.AvgFilePrecision != b.AvgFilePrecision {
++			return a.AvgFilePrecision > b.AvgFilePrecision
++		}
++		if a.AvgSemanticSimilarity != b.AvgSemanticSimilarity {
++			return a.AvgSemanticSimilarity > b.AvgSemanticSimilarity
++		}
++		if a.RiskScore != b.RiskScore {
++			return a.RiskScore < b.RiskScore
++		}
++		aTokens, aHasTokens := replaySummaryTokenCount(a)
++		bTokens, bHasTokens := replaySummaryTokenCount(b)
++		if aHasTokens != bHasTokens {
++			return aHasTokens
++		}
++		if aHasTokens && aTokens != bTokens {
++			return aTokens < bTokens
++		}
++		if a.AvgDurationMS != b.AvgDurationMS {
++			return a.AvgDurationMS < b.AvgDurationMS
++		}
++		return a.Agent < b.Agent
++	})
++}
++
++func renderReplayRun(w io.Writer, run *ReplayRun) {
++	sty := newStatusStyles(w)
++	fmt.Fprintf(w, "\n  %s %s\n", sty.render(sty.bold, "Replay"), sty.render(sty.cyan, run.ID))
++	fmt.Fprintf(w, "  checkpoint %s %s agent %s %s status %s\n\n",
++		sty.render(sty.cyan, run.Spec.CheckpointID),
++		sty.render(sty.dim, "·"),
++		run.Agent,
++		sty.render(sty.dim, "·"),
++		renderReplayStatus(sty, run.Status),
++	)
++	fmt.Fprintf(w, "  %s %s..%s\n", sty.render(sty.bold, "Range:"), shortReplaySHA(run.Spec.BaseCommit), shortReplaySHA(run.Spec.TargetCommit))
++	fmt.Fprintf(w, "  %s %s\n", sty.render(sty.bold, "Files:"), replayFileMetricText(run.Metrics))
++	if run.Test.Status != replayStatusSkipped {
++		fmt.Fprintf(w, "  %s %s", sty.render(sty.bold, "Tests:"), renderReplayStatus(sty, run.Test.Status))
++		if run.Test.Command != "" {
++			fmt.Fprintf(w, " %s %s", sty.render(sty.dim, "·"), run.Test.Command)
++		}
++		fmt.Fprintln(w)
++	}
++	if run.TokenUsage != nil {
++		fmt.Fprintf(w, "  %s %s\n", sty.render(sty.bold, "Tokens:"), replayTokenUsageText(run.TokenUsage))
++	}
++	if run.Metrics.SemanticAvailable {
++		fmt.Fprintf(w, "  %s %d%% semantic match\n", sty.render(sty.bold, "Semantic:"), run.Metrics.SemanticSimilarity)
++	}
++	if run.Metrics.RiskScore > 0 {
++		fmt.Fprintf(w, "  %s %s\n", sty.render(sty.bold, "Risk:"), replayRiskText(run.Metrics))
++	}
++	if run.WorktreePath != "" {
++		fmt.Fprintf(w, "  %s %s\n", sty.render(sty.bold, "Worktree:"), run.WorktreePath)
++	}
++	if run.ResultPath != "" {
++		fmt.Fprintf(w, "  %s %s\n", sty.render(sty.dim, "Saved:"), run.ResultPath)
++	}
++	if run.Error != "" {
++		fmt.Fprintf(w, "\n  %s %s\n", sty.render(sty.red, "Error:"), run.Error)
++	}
++	if run.Output != "" && run.Status != replayStatusPassed {
++		fmt.Fprintf(w, "\n  %s\n", sty.render(sty.dim, "Agent output:"))
++		renderReplayBlock(w, sty, run.Output, run.OutputTruncated)
++	}
++	if run.Test.Output != "" && run.Test.Status == replayStatusFailed {
++		fmt.Fprintf(w, "\n  %s\n", sty.render(sty.dim, "Test output:"))
++		renderReplayBlock(w, sty, run.Test.Output, run.Test.OutputTruncated)
++	}
++	if len(run.Warnings) > 0 {
++		fmt.Fprintf(w, "\n  %s\n", sty.render(sty.dim, "Warnings:"))
++		for _, warning := range run.Warnings {
++			fmt.Fprintf(w, "  - %s\n", sty.render(sty.dim, warning))
++		}
++	}
++	fmt.Fprintln(w)
++}
++
++func renderReplayBlock(w io.Writer, sty statusStyles, text string, truncated bool) {
++	text = strings.TrimSpace(text)
++	if text == "" {
++		return
++	}
++	lines := strings.Split(text, "\n")
++	visibleLines := lines
++	omittedLines := 0
++	if len(lines) > replayRenderedOutputLineLimit {
++		visibleLines = lines[:replayRenderedOutputLineLimit]
++		omittedLines = len(lines) - replayRenderedOutputLineLimit
++	}
++	visibleHasTruncationMarker := false
++	for _, line := range visibleLines {
++		if strings.Contains(line, "...[truncated]") {
++			visibleHasTruncationMarker = true
++		}
++		fmt.Fprintf(w, "  │ %s\n", sty.render(sty.dim, line))
++	}
++	if omittedLines > 0 {
++		fmt.Fprintf(w, "  │ %s\n", sty.render(sty.dim, fmt.Sprintf("...[%d more lines in saved report]", omittedLines)))
++	}
++	if truncated && !visibleHasTruncationMarker {
++		fmt.Fprintf(w, "  │ %s\n", sty.render(sty.dim, "...[truncated]"))
++	}
++}
++
++func renderReplayEval(w io.Writer, eval *ReplayEvalRun) {
++	sty := newStatusStyles(w)
++	fmt.Fprintf(w, "\n  %s %s\n\n", sty.render(sty.bold, "Replay Eval"), sty.render(sty.cyan, eval.ID))
++	if len(eval.Runs) == 0 {
++		fmt.Fprintf(w, "  %s\n\n", sty.render(sty.dim, "No runs recorded."))
++		return
++	}
++	if len(eval.Summaries) > 0 {
++		fmt.Fprintf(w, "  %s\n", sty.render(sty.bold, "Agent Ranking"))
++		fmt.Fprintf(w, "  %-18s  %-4s  %-5s  %-7s  %-7s  %-5s  %-8s  %s\n", "Agent", "Runs", "Pass", "Recall", "Prec.", "Risk", "Duration", "Tokens")
++		fmt.Fprintf(w, "  %s\n", sty.render(sty.dim, strings.Repeat("─", 88)))
++		for _, summary := range eval.Summaries {
++			fmt.Fprintf(w, "  %-18s  %4d  %4d%%  %6d%%  %6d%%  %5d  %8s  %s\n",
++				stringutil.TruncateRunes(summary.Agent, 18, ""),
++				summary.Runs,
++				summary.PassRate,
++				summary.AvgFileRecall,
++				summary.AvgFilePrecision,
++				summary.RiskScore,
++				formatReplayDuration(summary.AvgDurationMS),
++				replayEvalTokenText(summary),
++			)
++		}
++		fmt.Fprintln(w)
++	}
++	fmt.Fprintf(w, "  %s\n", sty.render(sty.bold, "Runs"))
++	fmt.Fprintf(w, "  %-12s  %-18s  %-8s  %-7s  %-7s  %-5s  %s\n", "Checkpoint", "Agent", "Status", "Recall", "Prec.", "Risk", "Tests")
++	fmt.Fprintf(w, "  %s\n", sty.render(sty.dim, strings.Repeat("─", 82)))
++	for _, run := range eval.Runs {
++		fmt.Fprintf(w, "  %-12s  %-18s  %-8s  %6d%%  %6d%%  %5d  %s\n",
++			run.Spec.CheckpointID,
++			stringutil.TruncateRunes(run.Agent, 18, ""),
++			run.Status,
++			run.Metrics.FileRecall,
++			run.Metrics.FilePrecision,
++			run.Metrics.RiskScore,
++			run.Test.Status,
++		)
++	}
++	if eval.ResultPath != "" {
++		fmt.Fprintf(w, "\n  %s %s\n", sty.render(sty.dim, "Saved:"), eval.ResultPath)
++	}
++	fmt.Fprintln(w)
++}
++
++func renderReplayStatus(sty statusStyles, status string) string {
++	switch status {
++	case replayStatusPassed:
++		return sty.render(sty.green, status)
++	case replayStatusFailed:
++		return sty.render(sty.red, status)
++	case replayStatusSkipped:
++		return sty.render(sty.dim, status)
++	default:
++		return sty.render(sty.yellow, status)
++	}
++}
++
++func replayFileMetricText(metrics ReplayMetrics) string {
++	return fmt.Sprintf("%d%% recall, %d%% precision (%d overlap, %d missing, %d extra)",
++		metrics.FileRecall,
++		metrics.FilePrecision,
++		metrics.FileOverlap,
++		len(metrics.MissingFiles),
++		len(metrics.ExtraFiles),
++	)
++}
++
++func replayRiskText(metrics ReplayMetrics) string {
++	var details []string
++	if len(metrics.ExtraFiles) > 0 {
++		details = append(details, fmt.Sprintf("%d extra", len(metrics.ExtraFiles)))
++	}
++	if len(metrics.RiskyFiles) > 0 {
++		details = append(details, fmt.Sprintf("%d risky", len(metrics.RiskyFiles)))
++	}
++	if metrics.MissingTests {
++		details = append(details, "missing tests")
++	}
++	if len(details) == 0 {
++		return fmt.Sprintf("risk score %d", metrics.RiskScore)
++	}
++	return fmt.Sprintf("risk score %d (%s)", metrics.RiskScore, strings.Join(details, ", "))
++}
++
++func replayTokenUsageText(usage *agent.TokenUsage) string {
++	if usage == nil {
++		return ""
++	}
++	input := usage.InputTokens + usage.CacheCreationTokens + usage.CacheReadTokens
++	return fmt.Sprintf("%d in, %d out", input, usage.OutputTokens)
++}
++
++func replayTokenCount(usage *agent.TokenUsage) (int, bool) {
++	if usage == nil {
++		return 0, false
++	}
++	input := usage.InputTokens + usage.CacheCreationTokens + usage.CacheReadTokens
++	output := usage.OutputTokens
++	total := input + output
++	return total, total > 0
++}
++
++func replaySummaryTokenCount(summary ReplayEvalAgentSummary) (int, bool) {
++	total := summary.InputTokens + summary.OutputTokens
++	return total, total > 0
++}
++
++func replayEvalTokenText(summary ReplayEvalAgentSummary) string {
++	if summary.InputTokens == 0 && summary.OutputTokens == 0 {
++		return "-"
++	}
++	return fmt.Sprintf("%d/%d", summary.InputTokens, summary.OutputTokens)
++}
++
++func formatReplayDuration(ms int64) string {
++	switch {
++	case ms <= 0:
++		return "-"
++	case ms < 1000:
++		return fmt.Sprintf("%dms", ms)
++	default:
++		return fmt.Sprintf("%.1fs", float64(ms)/1000)
++	}
++}
++
++func replayGit(ctx context.Context, repoRoot string, args ...string) (string, error) {
++	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", repoRoot}, args...)...)
++	var stderr bytes.Buffer
++	cmd.Stderr = &stderr
++	out, err := cmd.Output()
++	if err != nil {
++		msg := strings.TrimSpace(stderr.String())
++		if msg != "" {
++			return "", fmt.Errorf("git %s: %w (stderr: %s)", strings.Join(args, " "), err, msg)
++		}
++		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
++	}
++	return strings.TrimSpace(string(out)), nil
++}
++
++func normalizeReplayPaths(paths []string) []string {
++	out := make([]string, 0, len(paths))
++	seen := make(map[string]struct{}, len(paths))
++	for _, p := range paths {
++		normalized := filepath.ToSlash(strings.Trim(strings.TrimSpace(p), "/"))
++		if normalized == "" {
++			continue
++		}
++		if _, ok := seen[normalized]; ok {
++			continue
++		}
++		seen[normalized] = struct{}{}
++		out = append(out, normalized)
++	}
++	sort.Strings(out)
++	return out
++}
++
++func uniqueNonEmpty(values []string) []string {
++	var out []string
++	seen := make(map[string]struct{}, len(values))
++	for _, value := range values {
++		value = strings.TrimSpace(value)
++		if value == "" {
++			continue
++		}
++		if _, ok := seen[value]; ok {
++			continue
++		}
++		seen[value] = struct{}{}
++		out = append(out, value)
++	}
++	return out
++}
++
++func percent(numerator, denominator int) int {
++	if denominator == 0 {
++		if numerator == 0 {
++			return 100
++		}
++		return 0
++	}
++	return numerator * 100 / denominator
++}
++
++func jaccardPercent(a, b map[string]struct{}) int {
++	if len(a) == 0 && len(b) == 0 {
++		return 100
++	}
++	intersection := 0
++	union := make(map[string]struct{}, len(a)+len(b))
++	for key := range a {
++		union[key] = struct{}{}
++		if _, ok := b[key]; ok {
++			intersection++
++		}
++	}
++	for key := range b {
++		union[key] = struct{}{}
++	}
++	return percent(intersection, len(union))
++}
++
++func truncateReplayOutput(output string) (string, bool) {
++	output = strings.TrimSpace(output)
++	if len(output) <= replayResultOutputLimit {
++		return output, false
++	}
++	return output[:replayResultOutputLimit] + "\n...[truncated]", true
++}
++
++func truncateReplayDiff(diff string) (string, bool) {
++	if len(diff) <= replayResultDiffLimit {
++		return diff, false
++	}
++	return diff[:replayResultDiffLimit] + "\n...[diff truncated]", true
++}
++
++func shortReplaySHA(sha string) string {
++	if len(sha) <= 8 {
++		return sha
++	}
++	return sha[:8]
++}
++
++func newReplayID() string {
++	var b [6]byte
++	if _, err := rand.Read(b[:]); err != nil {
++		return fmt.Sprintf("%012x", time.Now().UnixNano()&0xffffffffffff)
++	}
++	return hex.EncodeToString(b[:])
++}
++
++func writeReplayJSON(w io.Writer, value any) error {
++	encoder := json.NewEncoder(w)
++	encoder.SetIndent("", "  ")
++	if err := encoder.Encode(value); err != nil {
++		return fmt.Errorf("encode json: %w", err)
++	}
++	return nil
++}
+diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
+new file mode 100644
+index 00000000..2e34026c
+--- /dev/null
++++ b/cmd/entire/cli/replay_test.go
+@@ -0,0 +1,1030 @@
++package cli
++
++import (
++	"bytes"
++	"context"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"os"
++	"path/filepath"
++	"slices"
++	"strings"
++	"testing"
++	"time"
++
++	agentpkg "github.com/entireio/cli/cmd/entire/cli/agent"
++	"github.com/entireio/cli/cmd/entire/cli/checkpoint"
++	checkpointid "github.com/entireio/cli/cmd/entire/cli/checkpoint/id"
++	"github.com/entireio/cli/cmd/entire/cli/paths"
++	"github.com/entireio/cli/cmd/entire/cli/session"
++	"github.com/entireio/cli/cmd/entire/cli/testutil"
++	"github.com/entireio/cli/cmd/entire/cli/trailers"
++	"github.com/entireio/cli/redact"
++	git "github.com/go-git/go-git/v6"
++)
++
++const (
++	fakeReplayAgent     = "fake-agent"
++	replayFixtureFile   = "app.py"
++	replayTargetContent = "def greet():\n    return 'hello'\n\n\ndef replay_helper():\n    return 'ok'\n"
++)
++
++func TestBuildReplaySpecFromCheckpoint(t *testing.T) {
++	repoRoot, cpID, base, target := newReplayRepo(t)
++
++	spec, err := buildReplaySpec(context.Background(), cpID)
++	if err != nil {
++		t.Fatalf("buildReplaySpec() error = %v", err)
++	}
++
++	if spec.CheckpointID != cpID {
++		t.Fatalf("CheckpointID = %q, want %q", spec.CheckpointID, cpID)
++	}
++	if spec.BaseCommit != base {
++		t.Fatalf("BaseCommit = %q, want %q", spec.BaseCommit, base)
++	}
++	if spec.TargetCommit != target {
++		t.Fatalf("TargetCommit = %q, want %q", spec.TargetCommit, target)
++	}
++	if spec.Prompt != "Add the replay helper." {
++		t.Fatalf("Prompt = %q", spec.Prompt)
++	}
++	if got := strings.Join(spec.FilesTouched, ","); got != replayFixtureFile {
++		t.Fatalf("FilesTouched = %q", got)
++	}
++	if spec.OriginalAgent != string(agentpkg.AgentTypeClaudeCode) {
++		t.Fatalf("OriginalAgent = %q", spec.OriginalAgent)
++	}
++
++	if content, err := os.ReadFile(filepath.Join(repoRoot, replayFixtureFile)); err != nil || !strings.Contains(string(content), "replay_helper") {
++		t.Fatalf("fixture target file not written: %v", err)
++	}
++}
++
++func TestBuildReplaySpecFallsBackToTranscriptPrompt(t *testing.T) {
++	_, cpID, _, _ := newReplayRepoWithPrompts(t, nil, []byte(`{"type":"user","uuid":"u1","message":{"content":"Replay this transcript prompt"}}
++{"type":"assistant","uuid":"a1","message":{"content":[{"type":"text","text":"Done"}]}}
++`))
++
++	spec, err := buildReplaySpec(context.Background(), cpID)
++	if err != nil {
++		t.Fatalf("buildReplaySpec() error = %v", err)
++	}
++	if spec.Prompt != "Replay this transcript prompt" {
++		t.Fatalf("Prompt = %q", spec.Prompt)
++	}
++}
++
++func TestBuildReplaySpecFallsBackToGitDiffFiles(t *testing.T) {
++	_, cpID, _, _ := newReplayRepoWithOptions(t, replayRepoOptions{
++		Prompts:      []string{"Add the replay helper."},
++		Transcript:   []byte(`{"type":"user","uuid":"u1","message":{"content":"Add the replay helper."}}` + "\n"),
++		FilesTouched: nil,
++	})
++
++	spec, err := buildReplaySpec(context.Background(), cpID)
++	if err != nil {
++		t.Fatalf("buildReplaySpec() error = %v", err)
++	}
++	if got := strings.Join(spec.FilesTouched, ","); got != replayFixtureFile {
++		t.Fatalf("FilesTouched = %q, want git diff fallback %s", got, replayFixtureFile)
++	}
++}
++
++func TestReplayCheckpointUsesIsolatedWorktreeAndSavesResult(t *testing.T) {
++	repoRoot, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "fake replay completed"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:       fakeReplayAgent,
++		TestCommand: "python3 -m py_compile " + replayFixtureFile,
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++
++	if run.Status != replayStatusPassed {
++		t.Fatalf("Status = %q, error = %s", run.Status, run.Error)
++	}
++	if run.SchemaVersion != replaySchemaVersion {
++		t.Fatalf("SchemaVersion = %d, want %d", run.SchemaVersion, replaySchemaVersion)
++	}
++	if run.WorktreePath != "" {
++		t.Fatalf("WorktreePath should be empty when keep-worktree=false, got %q", run.WorktreePath)
++	}
++	if run.Metrics.FileRecall != 100 || run.Metrics.FilePrecision != 100 {
++		t.Fatalf("metrics = %+v", run.Metrics)
++	}
++	if run.Test.Status != replayStatusPassed {
++		t.Fatalf("test status = %q output=%s", run.Test.Status, run.Test.Output)
++	}
++	if run.ResultPath == "" {
++		t.Fatal("ResultPath is empty")
++	}
++	if _, err := os.Stat(run.ResultPath); err != nil {
++		t.Fatalf("saved result missing: %v", err)
++	}
++
++	mainContent, err := os.ReadFile(filepath.Join(repoRoot, replayFixtureFile))
++	if err != nil {
++		t.Fatalf("read main worktree: %v", err)
++	}
++	if !strings.Contains(string(mainContent), "replay_helper") {
++		t.Fatalf("main worktree should remain at target commit content, got:\n%s", mainContent)
++	}
++}
++
++func TestReplayCheckpointKeepWorktreePreservesPath(t *testing.T) {
++	repoRoot, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, _ ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		return ReplayRunnerResult{Output: "no changes"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:        fakeReplayAgent,
++		KeepWorktree: true,
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.WorktreePath == "" {
++		t.Fatal("WorktreePath is empty")
++	}
++	if _, err := os.Stat(run.WorktreePath); err != nil {
++		t.Fatalf("kept worktree missing: %v", err)
++	}
++	t.Cleanup(func() {
++		if err := removeReplayWorktree(context.Background(), repoRoot, run.WorktreePath); err != nil {
++			t.Errorf("remove replay worktree: %v", err)
++		}
++	})
++}
++
++func TestReplayCheckpointCapturesCommittedAgentResult(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		if _, err := replayGit(ctx, req.WorktreePath, "add", replayFixtureFile); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		if _, err := replayGit(ctx, req.WorktreePath,
++			"-c", "user.name=Replay Agent",
++			"-c", "user.email=replay@example.com",
++			"commit", "--no-gpg-sign", "-m", "agent replay result",
++		); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "committed replay completed"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{Agent: fakeReplayAgent})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if got := strings.Join(run.ChangedFiles, ","); got != replayFixtureFile {
++		t.Fatalf("ChangedFiles = %q", got)
++	}
++	if !strings.Contains(run.Diff, "replay_helper") {
++		t.Fatalf("Diff does not include committed replay result:\n%s", run.Diff)
++	}
++	if run.Metrics.FileRecall != 100 || run.Metrics.FilePrecision != 100 {
++		t.Fatalf("metrics = %+v", run.Metrics)
++	}
++}
++
++func TestReplayCheckpointTruncatesLargeDiff(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		largeContent := "def greet():\n    return 'hello'\n\n" + strings.Repeat("# replay filler line\n", 40000)
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(largeContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "large replay completed"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{Agent: fakeReplayAgent})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if !run.DiffTruncated {
++		t.Fatal("DiffTruncated = false, want true")
++	}
++	if len(run.Diff) > replayResultDiffLimit+len("\n...[diff truncated]") {
++		t.Fatalf("diff length = %d, want capped", len(run.Diff))
++	}
++	if !strings.Contains(run.Diff, "...[diff truncated]") {
++		t.Fatalf("diff missing truncation marker")
++	}
++
++	loaded, err := readReplayRun(context.Background(), run.ID)
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if !loaded.DiffTruncated {
++		t.Fatal("loaded DiffTruncated = false, want true")
++	}
++}
++
++func TestReplayCheckpointMarksTruncatedOutput(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: strings.Repeat("agent output\n", 7000)}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:       fakeReplayAgent,
++		TestCommand: `python3 -c 'print("test output " * 7000)'`,
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if !run.OutputTruncated {
++		t.Fatal("OutputTruncated = false, want true")
++	}
++	if !strings.Contains(run.Output, "...[truncated]") {
++		t.Fatalf("Output missing truncation marker")
++	}
++	if !run.Test.OutputTruncated {
++		t.Fatal("Test.OutputTruncated = false, want true")
++	}
++	if !strings.Contains(run.Test.Output, "...[truncated]") {
++		t.Fatalf("Test.Output missing truncation marker")
++	}
++
++	loaded, err := readReplayRun(context.Background(), run.ID)
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if !loaded.OutputTruncated || !loaded.Test.OutputTruncated {
++		t.Fatalf("loaded truncation flags = run:%v test:%v", loaded.OutputTruncated, loaded.Test.OutputTruncated)
++	}
++}
++
++func TestReplayCheckpointCapturesDiffAfterAgentTimeout(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		<-ctx.Done()
++		return ReplayRunnerResult{Output: "agent timed out after writing files"}, ctx.Err()
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:   fakeReplayAgent,
++		Timeout: 200 * time.Millisecond,
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.Status != replayStatusFailed {
++		t.Fatalf("Status = %q, want failed", run.Status)
++	}
++	if got := strings.Join(run.ChangedFiles, ","); got != replayFixtureFile {
++		t.Fatalf("ChangedFiles = %q, want replay output after timeout", got)
++	}
++	if !strings.Contains(run.Diff, "replay_helper") {
++		t.Fatalf("Diff missing timed-out replay changes:\n%s", run.Diff)
++	}
++	if run.Metrics.FileRecall != 100 || run.Metrics.FilePrecision != 100 {
++		t.Fatalf("metrics = %+v", run.Metrics)
++	}
++	if len(run.Warnings) != 0 {
++		t.Fatalf("warnings = %+v, want no diff-inspection warning", run.Warnings)
++	}
++}
++
++func TestReplayCheckpointMetricsIgnoreTestArtifacts(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "fake replay completed"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:       fakeReplayAgent,
++		TestCommand: "mkdir -p __pycache__ && printf artifact > __pycache__/artifact.pyc",
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if got := strings.Join(run.ChangedFiles, ","); got != replayFixtureFile {
++		t.Fatalf("ChangedFiles = %q, want only replay output", got)
++	}
++	if run.Metrics.FileRecall != 100 || run.Metrics.FilePrecision != 100 {
++		t.Fatalf("metrics include test artifacts: %+v", run.Metrics)
++	}
++}
++
++func TestReplayCheckpointSkipsTestsWhenAgentFails(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte("def existing():\n    return 1\n"), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "fake replay failed"}, errors.New("agent failed")
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:       fakeReplayAgent,
++		TestCommand: "mkdir -p __pycache__ && printf artifact > __pycache__/artifact.pyc",
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.Status != replayStatusFailed {
++		t.Fatalf("Status = %q, want failed", run.Status)
++	}
++	if run.Test.Status != replayTestStatusSkipped {
++		t.Fatalf("test status = %q, want skipped", run.Test.Status)
++	}
++	if slices.Contains(run.ChangedFiles, "__pycache__/artifact.pyc") {
++		t.Fatalf("ChangedFiles include test artifact: %q", strings.Join(run.ChangedFiles, ","))
++	}
++	if !slices.Contains(run.Warnings, "test command skipped because replay agent failed") {
++		t.Fatalf("warnings = %+v", run.Warnings)
++	}
++}
++
++func TestReplayEvalRunRanksAndPersistsResults(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "fake replay completed"}, nil
++	})
++	defer restore()
++
++	eval, err := runReplayEval(context.Background(), replayEvalOptions{
++		Checkpoints: []string{cpID},
++		Agents:      []string{fakeReplayAgent},
++	})
++	if err != nil {
++		t.Fatalf("runReplayEval() error = %v", err)
++	}
++	if len(eval.Runs) != 1 {
++		t.Fatalf("runs = %d, want 1", len(eval.Runs))
++	}
++	if eval.SchemaVersion != replaySchemaVersion || eval.Runs[0].SchemaVersion != replaySchemaVersion {
++		t.Fatalf("schema versions = eval %d run %d, want %d", eval.SchemaVersion, eval.Runs[0].SchemaVersion, replaySchemaVersion)
++	}
++	if eval.Runs[0].Status != replayStatusPassed {
++		t.Fatalf("run status = %q", eval.Runs[0].Status)
++	}
++	if eval.ResultPath == "" {
++		t.Fatal("ResultPath is empty")
++	}
++	if len(eval.Summaries) != 1 {
++		t.Fatalf("summaries = %d, want 1", len(eval.Summaries))
++	}
++	if summary := eval.Summaries[0]; summary.Agent != fakeReplayAgent || summary.PassRate != 100 || summary.AvgFileRecall != 100 {
++		t.Fatalf("summary = %+v", summary)
++	}
++
++	loaded, err := readReplayEval(context.Background(), eval.ID)
++	if err != nil {
++		t.Fatalf("readReplayEval() error = %v", err)
++	}
++	if loaded.ID != eval.ID || len(loaded.Runs) != 1 || loaded.SchemaVersion != replaySchemaVersion || loaded.Runs[0].SchemaVersion != replaySchemaVersion {
++		t.Fatalf("loaded eval = %+v", loaded)
++	}
++}
++
++func TestReplayReportReadsSavedRun(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "fake replay completed"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{Agent: fakeReplayAgent})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	loaded, err := readReplayRun(context.Background(), run.ID)
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if loaded.ID != run.ID || loaded.Spec.CheckpointID != cpID || loaded.SchemaVersion != replaySchemaVersion {
++		t.Fatalf("loaded run = %+v", loaded)
++	}
++}
++
++func TestReplayEvalSkipsUnsupportedAgent(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++
++	eval, err := runReplayEval(context.Background(), replayEvalOptions{
++		Checkpoints: []string{cpID},
++		Agents:      []string{"unsupported-agent"},
++	})
++	if err != nil {
++		t.Fatalf("runReplayEval() error = %v", err)
++	}
++	if len(eval.Runs) != 1 {
++		t.Fatalf("runs = %d, want 1", len(eval.Runs))
++	}
++	if eval.Runs[0].Status != replayStatusSkipped {
++		t.Fatalf("status = %q, want skipped", eval.Runs[0].Status)
++	}
++	if eval.Runs[0].Test.Status != replayTestStatusSkipped {
++		t.Fatalf("test status = %q, want skipped", eval.Runs[0].Test.Status)
++	}
++}
++
++func TestReplayCheckpointMissingAgentCommandFailsEarly(t *testing.T) {
++	restoreRunner := stubReplayRunner(func(_ context.Context, _ ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		t.Fatal("runner should not execute when command is missing")
++		return ReplayRunnerResult{}, nil
++	})
++	defer restoreRunner()
++	restoreCommand := replayCommandForAgent
++	replayCommandForAgent = func(string) string {
++		return filepath.Join(t.TempDir(), "missing-agent-command")
++	}
++	defer func() { replayCommandForAgent = restoreCommand }()
++
++	_, err := runReplayCheckpoint(context.Background(), "does-not-need-a-real-checkpoint", replayCheckpointOptions{Agent: fakeReplayAgent})
++	if err == nil {
++		t.Fatal("runReplayCheckpoint() error = nil, want missing command error")
++	}
++	if !strings.Contains(err.Error(), "requires") || !strings.Contains(err.Error(), "missing-agent-command") {
++		t.Fatalf("error = %v", err)
++	}
++}
++
++func TestReplayEvalSkipsMissingAgentCommand(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restoreRunner := stubReplayRunner(func(_ context.Context, _ ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		t.Fatal("runner should not execute when command is missing")
++		return ReplayRunnerResult{}, nil
++	})
++	defer restoreRunner()
++	restoreCommand := replayCommandForAgent
++	replayCommandForAgent = func(string) string {
++		return filepath.Join(t.TempDir(), "missing-agent-command")
++	}
++	defer func() { replayCommandForAgent = restoreCommand }()
++
++	eval, err := runReplayEval(context.Background(), replayEvalOptions{
++		Checkpoints: []string{cpID},
++		Agents:      []string{fakeReplayAgent},
++	})
++	if err != nil {
++		t.Fatalf("runReplayEval() error = %v", err)
++	}
++	if len(eval.Runs) != 1 {
++		t.Fatalf("runs = %d, want 1", len(eval.Runs))
++	}
++	run := eval.Runs[0]
++	if run.Status != replayStatusSkipped || run.Test.Status != replayTestStatusSkipped {
++		t.Fatalf("run = %+v, want skipped run and skipped test", run)
++	}
++	if !strings.Contains(run.Error, "requires") || !strings.Contains(run.Error, "missing-agent-command") {
++		t.Fatalf("error = %q", run.Error)
++	}
++}
++
++func TestReplayMetricsFlagsExtraAndRiskyFiles(t *testing.T) {
++	metrics := replayMetrics(context.Background(), "", "", ReplaySpec{FilesTouched: []string{replayFixtureFile}}, []string{replayFixtureFile, "auth/config.yaml", "db/schema.sql"})
++
++	if metrics.FileRecall != 100 {
++		t.Fatalf("FileRecall = %d", metrics.FileRecall)
++	}
++	if metrics.FilePrecision != 33 {
++		t.Fatalf("FilePrecision = %d", metrics.FilePrecision)
++	}
++	if got := strings.Join(metrics.ExtraFiles, ","); got != "auth/config.yaml,db/schema.sql" {
++		t.Fatalf("ExtraFiles = %q", got)
++	}
++	if got := strings.Join(metrics.RiskyFiles, ","); got != "auth/config.yaml,db/schema.sql" {
++		t.Fatalf("RiskyFiles = %q", got)
++	}
++	if !metrics.MissingTests {
++		t.Fatal("MissingTests = false, want true")
++	}
++	if metrics.RiskScore == 0 {
++		t.Fatal("RiskScore should be non-zero")
++	}
++}
++
++func TestReplayMetricsBroadSourceFilesNeedTests(t *testing.T) {
++	for _, file := range []string{
++		"cmd/main.go",
++		"src/App.tsx",
++		"src/Auth.java",
++		"Sources/AuthService.swift",
++		"lib/token.rb",
++		"src/parser.rs",
++		"database/schema.sql",
++		"proto/service.proto",
++		"infra/main.tf",
++		"scripts/deploy.sh",
++		"src/lib.cpp",
++		"src/claims.cs",
++		"lib/module.ex",
++		"src/query.scala",
++		"src/plugin.php",
++	} {
++		if !sourceChangedWithoutTests([]string{file}) {
++			t.Fatalf("sourceChangedWithoutTests(%q) = false, want true", file)
++		}
++	}
++	if sourceChangedWithoutTests([]string{"src/Auth.java", "src/AuthTest.java"}) {
++		t.Fatal("sourceChangedWithoutTests() = true when test file changed too")
++	}
++	if !sourceChangedWithoutTests([]string{"src/contest.go"}) {
++		t.Fatal("sourceChangedWithoutTests() = false for non-test source file containing test")
++	}
++	if !sourceChangedWithoutTests([]string{"src/specimen.py"}) {
++		t.Fatal("sourceChangedWithoutTests() = false for non-test source file containing spec")
++	}
++}
++
++func TestReplayTestFileDetectionUsesConventions(t *testing.T) {
++	tests := []struct {
++		path string
++		want bool
++	}{
++		{"src/auth_test.go", true},
++		{"src/test_auth.py", true},
++		{"src/auth.test.ts", true},
++		{"src/auth.spec.tsx", true},
++		{"src/AuthTest.java", true},
++		{"src/AuthSpec.swift", true},
++		{"src/__tests__/auth.ts", true},
++		{"tests/auth.rs", true},
++		{"src/contest.go", false},
++		{"src/specimen.py", false},
++		{"src/latest.ts", false},
++		{"src/testimony.rb", false},
++	}
++
++	for _, tt := range tests {
++		if got := isReplayTestFile(tt.path); got != tt.want {
++			t.Fatalf("isReplayTestFile(%q) = %v, want %v", tt.path, got, tt.want)
++		}
++	}
++}
++
++func TestReplayRiskFlagsInfrastructureAndSecurityFiles(t *testing.T) {
++	files := []string{
++		".github/workflows/deploy.yml",
++		".env",
++		"infra/main.tf",
++		"security/policy.yaml",
++		"docs/readme.md",
++	}
++	got := strings.Join(riskyReplayFiles(files), ",")
++	want := ".env,.github/workflows/deploy.yml,infra/main.tf,security/policy.yaml"
++	if got != want {
++		t.Fatalf("riskyReplayFiles() = %q, want %q", got, want)
++	}
++}
++
++func TestReplayEvalAgentSummariesRankAgents(t *testing.T) {
++	summaries := summarizeReplayEvalAgents([]ReplayRun{
++		{
++			Agent:      "slow-risky",
++			Status:     replayStatusPassed,
++			DurationMS: 2000,
++			Metrics:    ReplayMetrics{FileRecall: 100, FilePrecision: 100, RiskScore: 3, SemanticAvailable: true, SemanticSimilarity: 50},
++			TokenUsage: &agentpkg.TokenUsage{InputTokens: 10, OutputTokens: 5},
++		},
++		{
++			Agent:      "fast-clean",
++			Status:     replayStatusPassed,
++			DurationMS: 1000,
++			Metrics:    ReplayMetrics{FileRecall: 100, FilePrecision: 100, RiskScore: 0, SemanticAvailable: true, SemanticSimilarity: 80},
++			TokenUsage: &agentpkg.TokenUsage{InputTokens: 3, CacheReadTokens: 2, OutputTokens: 1},
++		},
++		{
++			Agent:  "unsupported",
++			Status: replayStatusSkipped,
++		},
++	})
++
++	if len(summaries) != 3 {
++		t.Fatalf("summaries = %d, want 3", len(summaries))
++	}
++	if summaries[0].Agent != "fast-clean" {
++		t.Fatalf("top summary = %+v", summaries[0])
++	}
++	if summaries[0].InputTokens != 5 || summaries[0].OutputTokens != 1 {
++		t.Fatalf("token totals = %+v", summaries[0])
++	}
++	if summaries[2].Agent != "unsupported" || summaries[2].Skipped != 1 {
++		t.Fatalf("unsupported summary = %+v", summaries[2])
++	}
++}
++
++func TestReplayEvalAgentSummariesUseTokenTieBreaker(t *testing.T) {
++	summaries := summarizeReplayEvalAgents([]ReplayRun{
++		{
++			Agent:      "expensive",
++			Status:     replayStatusPassed,
++			DurationMS: 1000,
++			Metrics:    ReplayMetrics{FileRecall: 100, FilePrecision: 100, SemanticAvailable: true, SemanticSimilarity: 90},
++			TokenUsage: &agentpkg.TokenUsage{InputTokens: 100, OutputTokens: 20},
++		},
++		{
++			Agent:      "cheap",
++			Status:     replayStatusPassed,
++			DurationMS: 1000,
++			Metrics:    ReplayMetrics{FileRecall: 100, FilePrecision: 100, SemanticAvailable: true, SemanticSimilarity: 90},
++			TokenUsage: &agentpkg.TokenUsage{InputTokens: 10, OutputTokens: 2},
++		},
++	})
++
++	if len(summaries) != 2 {
++		t.Fatalf("summaries = %d, want 2", len(summaries))
++	}
++	if summaries[0].Agent != "cheap" {
++		t.Fatalf("top summary = %+v, want cheap token tie-breaker", summaries[0])
++	}
++}
++
++func TestSortReplayRunsUsesSemanticAndTokenTieBreakers(t *testing.T) {
++	runs := []ReplayRun{
++		{
++			ID:         "expensive",
++			Agent:      "expensive",
++			Status:     replayStatusPassed,
++			Test:       ReplayTestRun{Status: replayStatusPassed},
++			Metrics:    ReplayMetrics{FileRecall: 100, FilePrecision: 100, SemanticAvailable: true, SemanticSimilarity: 95},
++			TokenUsage: &agentpkg.TokenUsage{InputTokens: 100, OutputTokens: 10},
++			DurationMS: 1000,
++		},
++		{
++			ID:         "better-semantic",
++			Agent:      "better-semantic",
++			Status:     replayStatusPassed,
++			Test:       ReplayTestRun{Status: replayStatusPassed},
++			Metrics:    ReplayMetrics{FileRecall: 100, FilePrecision: 100, SemanticAvailable: true, SemanticSimilarity: 99},
++			TokenUsage: &agentpkg.TokenUsage{InputTokens: 1000, OutputTokens: 100},
++			DurationMS: 2000,
++		},
++		{
++			ID:         "cheap",
++			Agent:      "cheap",
++			Status:     replayStatusPassed,
++			Test:       ReplayTestRun{Status: replayStatusPassed},
++			Metrics:    ReplayMetrics{FileRecall: 100, FilePrecision: 100, SemanticAvailable: true, SemanticSimilarity: 95},
++			TokenUsage: &agentpkg.TokenUsage{InputTokens: 10, OutputTokens: 1},
++			DurationMS: 1000,
++		},
++	}
++
++	sortReplayRuns(runs)
++
++	if runs[0].ID != "better-semantic" {
++		t.Fatalf("first run = %+v, want better semantic match first", runs[0])
++	}
++	if runs[1].ID != "cheap" {
++		t.Fatalf("second run = %+v, want cheaper token tie-breaker", runs[1])
++	}
++}
++
++func TestExtractReplayTokenUsage(t *testing.T) {
++	output := strings.Join([]string{
++		`{"type":"assistant","usage":{"input_tokens":999,"output_tokens":999}}`,
++		`{"type":"result","usage":{"input_tokens":10,"cache_creation_input_tokens":2,"cache_read_input_tokens":3,"output_tokens":4}}`,
++		`{"type":"turn.completed","usage":{"input_tokens":20,"cached_input_tokens":5,"output_tokens":6}}`,
++	}, "\n")
++	usage := extractReplayTokenUsage(output)
++	if usage == nil {
++		t.Fatal("usage is nil")
++	}
++	if usage.InputTokens != 20 || usage.CacheReadTokens != 5 || usage.OutputTokens != 6 || usage.APICallCount != 1 {
++		t.Fatalf("usage = %+v", usage)
++	}
++}
++
++func TestRunReplayProcessPreservesTimeoutErrorAndOutput(t *testing.T) {
++	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
++	defer cancel()
++
++	result, err := runReplayProcess(ctx, t.TempDir(), "/bin/sh", []string{"-c", "printf replay-started; sleep 2"}, nil)
++	if err == nil {
++		t.Fatal("runReplayProcess() error = nil, want timeout")
++	}
++	if !errors.Is(err, context.DeadlineExceeded) {
++		t.Fatalf("error = %v, want context deadline exceeded", err)
++	}
++	if !strings.Contains(result.Output, "replay-started") {
++		t.Fatalf("output = %q, want partial stdout before timeout", result.Output)
++	}
++}
++
++func TestCommitReplayResultForSemanticCleanupPreservesWorkingTree(t *testing.T) {
++	repoRoot, _, base, _ := newReplayRepo(t)
++	worktree, err := createReplayWorktree(context.Background(), repoRoot, base)
++	if err != nil {
++		t.Fatalf("createReplayWorktree() error = %v", err)
++	}
++	t.Cleanup(func() {
++		if err := removeReplayWorktree(context.Background(), repoRoot, worktree); err != nil {
++			t.Errorf("remove replay worktree: %v", err)
++		}
++	})
++	if err := os.WriteFile(filepath.Join(worktree, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++		t.Fatalf("write replay content: %v", err)
++	}
++
++	replayHead, cleanup, err := commitReplayResultForSemantic(context.Background(), worktree)
++	if err != nil {
++		t.Fatalf("commitReplayResultForSemantic() error = %v", err)
++	}
++	if replayHead == base {
++		t.Fatal("semantic commit did not advance HEAD")
++	}
++	if err := cleanup(); err != nil {
++		t.Fatalf("semantic cleanup: %v", err)
++	}
++	head := replayGitForTest(t, worktree, "rev-parse", "HEAD")
++	if head != base {
++		t.Fatalf("HEAD after cleanup = %s, want %s", head, base)
++	}
++	diff := replayGitForTest(t, worktree, "diff", "--", replayFixtureFile)
++	if !strings.Contains(diff, "replay_helper") {
++		t.Fatalf("working tree diff lost replay changes:\n%s", diff)
++	}
++}
++
++func TestReplayJSONIsStable(t *testing.T) {
++	run := ReplayRun{
++		ID:     "abc123def456",
++		Status: replayStatusPassed,
++		Spec: ReplaySpec{
++			CheckpointID: "a1b2c3d4e5f6",
++			Prompt:       "Do work",
++			BaseCommit:   "base",
++			TargetCommit: "target",
++		},
++		Metrics: ReplayMetrics{FileRecall: 100, FilePrecision: 100},
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, run); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	var decoded ReplayRun
++	if err := json.Unmarshal(out.Bytes(), &decoded); err != nil {
++		t.Fatalf("json decode: %v", err)
++	}
++	if decoded.ID != run.ID || decoded.Spec.CheckpointID != run.Spec.CheckpointID {
++		t.Fatalf("decoded = %+v", decoded)
++	}
++}
++
++func TestRenderReplayRunShowsFailureOutput(t *testing.T) {
++	run := &ReplayRun{
++		ID:     "abc123def456",
++		Agent:  fakeReplayAgent,
++		Status: replayStatusFailed,
++		Spec: ReplaySpec{
++			CheckpointID: "a1b2c3d4e5f6",
++			BaseCommit:   "1111111111111111111111111111111111111111",
++			TargetCommit: "2222222222222222222222222222222222222222",
++		},
++		Output:          "agent stderr line",
++		OutputTruncated: true,
++		Test: ReplayTestRun{
++			Status:          replayStatusFailed,
++			Command:         "go test ./...",
++			Output:          "test failure line",
++			OutputTruncated: true,
++		},
++		Error:   "fake-agent replay failed: exit status 1",
++		Metrics: ReplayMetrics{FileRecall: 50, FilePrecision: 100},
++	}
++
++	var out bytes.Buffer
++	renderReplayRun(&out, run)
++	text := out.String()
++	for _, want := range []string{
++		"Agent output:",
++		"agent stderr line",
++		"Test output:",
++		"test failure line",
++		"...[truncated]",
++	} {
++		if !strings.Contains(text, want) {
++			t.Fatalf("rendered output missing %q:\n%s", want, text)
++		}
++	}
++}
++
++func TestRenderReplayRunHidesSuccessfulOutput(t *testing.T) {
++	run := &ReplayRun{
++		ID:     "abc123def456",
++		Agent:  fakeReplayAgent,
++		Status: replayStatusPassed,
++		Spec: ReplaySpec{
++			CheckpointID: "a1b2c3d4e5f6",
++			BaseCommit:   "1111111111111111111111111111111111111111",
++			TargetCommit: "2222222222222222222222222222222222222222",
++		},
++		Output:  "successful but noisy agent output",
++		Test:    ReplayTestRun{Status: replayStatusPassed, Output: "successful test output"},
++		Metrics: ReplayMetrics{FileRecall: 100, FilePrecision: 100},
++	}
++
++	var out bytes.Buffer
++	renderReplayRun(&out, run)
++	text := out.String()
++	if strings.Contains(text, "Agent output:") || strings.Contains(text, "successful but noisy") || strings.Contains(text, "Test output:") {
++		t.Fatalf("successful replay should not print noisy output:\n%s", text)
++	}
++}
++
++func TestRenderReplayRunLimitsFailureOutputLines(t *testing.T) {
++	var agentLines []string
++	for i := 1; i <= replayRenderedOutputLineLimit+5; i++ {
++		agentLines = append(agentLines, fmt.Sprintf("agent line %02d", i))
++	}
++	run := &ReplayRun{
++		ID:              "abc123def456",
++		Agent:           fakeReplayAgent,
++		Status:          replayStatusFailed,
++		Output:          strings.Join(agentLines, "\n"),
++		OutputTruncated: true,
++		Spec: ReplaySpec{
++			CheckpointID: "a1b2c3d4e5f6",
++			BaseCommit:   "1111111111111111111111111111111111111111",
++			TargetCommit: "2222222222222222222222222222222222222222",
++		},
++		Test:    ReplayTestRun{Status: replayTestStatusSkipped},
++		Metrics: ReplayMetrics{FileRecall: 50, FilePrecision: 100},
++	}
++
++	var out bytes.Buffer
++	renderReplayRun(&out, run)
++	text := out.String()
++	if !strings.Contains(text, "agent line 01") || !strings.Contains(text, fmt.Sprintf("agent line %02d", replayRenderedOutputLineLimit)) {
++		t.Fatalf("rendered output missing visible boundary lines:\n%s", text)
++	}
++	if strings.Contains(text, fmt.Sprintf("agent line %02d", replayRenderedOutputLineLimit+1)) {
++		t.Fatalf("rendered output leaked omitted line:\n%s", text)
++	}
++	if !strings.Contains(text, "...[5 more lines in saved report]") {
++		t.Fatalf("rendered output missing omitted line count:\n%s", text)
++	}
++	if !strings.Contains(text, "...[truncated]") {
++		t.Fatalf("rendered output missing truncation marker:\n%s", text)
++	}
++}
++
++func TestReplayAgentEnvDisablesGitHooks(t *testing.T) {
++	env := replayAgentEnv([]string{
++		"PATH=/usr/bin",
++		"GIT_DIR=/tmp/git",
++		"GIT_CONFIG_COUNT=99",
++		"GIT_CONFIG_KEY_0=user.name",
++		"GIT_CONFIG_VALUE_0=Bad",
++	})
++	joined := "\n" + strings.Join(env, "\n") + "\n"
++	for _, absent := range []string{"\nGIT_DIR=", "\nGIT_CONFIG_COUNT=99", "\nGIT_CONFIG_KEY_0=user.name", "\nGIT_CONFIG_VALUE_0=Bad"} {
++		if strings.Contains(joined, absent) {
++			t.Fatalf("env still contains %q:\n%s", absent, joined)
++		}
++	}
++	for _, present := range []string{"ENTIRE_REPLAY=1", "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=core.hooksPath", "GIT_CONFIG_VALUE_0=/dev/null"} {
++		if !strings.Contains(joined, "\n"+present+"\n") {
++			t.Fatalf("env missing %q:\n%s", present, joined)
++		}
++	}
++}
++
++func TestRootCommandHasReplayAndEval(t *testing.T) {
++	root := NewRootCmd()
++	replayCmd, _, err := root.Find([]string{"replay", "checkpoint"})
++	if err != nil {
++		t.Fatalf("find replay checkpoint: %v", err)
++	}
++	if replayCmd.Name() != "checkpoint" {
++		t.Fatalf("replay command = %q", replayCmd.Name())
++	}
++	reportCmd, _, err := root.Find([]string{"replay", "report"})
++	if err != nil {
++		t.Fatalf("find replay report: %v", err)
++	}
++	if reportCmd.Name() != "report" {
++		t.Fatalf("replay report command = %q", reportCmd.Name())
++	}
++	evalCmd, _, err := root.Find([]string{"eval", "run"})
++	if err != nil {
++		t.Fatalf("find eval run: %v", err)
++	}
++	if evalCmd.Name() != "run" {
++		t.Fatalf("eval command = %q", evalCmd.Name())
++	}
++}
++
++func newReplayRepo(t *testing.T) (repoRoot, cpID, base, target string) {
++	t.Helper()
++	return newReplayRepoWithPrompts(t, []string{"Add the replay helper."}, []byte(`{"type":"user","uuid":"u1","message":{"content":"Add the replay helper."}}
++`))
++}
++
++func newReplayRepoWithPrompts(t *testing.T, prompts []string, transcript []byte) (repoRoot, cpID, base, target string) {
++	t.Helper()
++	return newReplayRepoWithOptions(t, replayRepoOptions{
++		Prompts:      prompts,
++		Transcript:   transcript,
++		FilesTouched: []string{replayFixtureFile},
++	})
++}
++
++type replayRepoOptions struct {
++	Prompts      []string
++	Transcript   []byte
++	FilesTouched []string
++}
++
++func newReplayRepoWithOptions(t *testing.T, opts replayRepoOptions) (repoRoot, cpID, base, target string) {
++	t.Helper()
++	repoRoot = t.TempDir()
++	testutil.InitRepo(t, repoRoot)
++	t.Chdir(repoRoot)
++	paths.ClearWorktreeRootCache()
++	session.ClearGitCommonDirCache()
++	t.Cleanup(paths.ClearWorktreeRootCache)
++	t.Cleanup(session.ClearGitCommonDirCache)
++
++	testutil.WriteFile(t, repoRoot, ".gitignore", "__pycache__/\n")
++	testutil.WriteFile(t, repoRoot, replayFixtureFile, "def greet():\n    return 'hello'\n")
++	testutil.GitAdd(t, repoRoot, ".gitignore", replayFixtureFile)
++	testutil.GitCommit(t, repoRoot, "initial app")
++	base = replayGitForTest(t, repoRoot, "rev-parse", "HEAD")
++
++	cpID = "a1b2c3d4e5f6"
++	testutil.WriteFile(t, repoRoot, replayFixtureFile, "def greet():\n    return 'hello'\n\n\ndef replay_helper():\n    return 'ok'\n")
++	testutil.GitAdd(t, repoRoot, replayFixtureFile)
++	testutil.GitCommit(t, repoRoot, trailers.FormatCheckpoint("add replay helper", checkpointid.MustCheckpointID(cpID)))
++	target = replayGitForTest(t, repoRoot, "rev-parse", "HEAD")
++
++	repo, err := git.PlainOpen(repoRoot)
++	if err != nil {
++		t.Fatalf("open repo: %v", err)
++	}
++	defer repo.Close()
++	if err := checkpoint.NewGitStore(repo).WriteCommitted(context.Background(), checkpoint.WriteCommittedOptions{
++		CheckpointID:     checkpointid.MustCheckpointID(cpID),
++		SessionID:        "session-replay-12345678",
++		Strategy:         "manual-commit",
++		Branch:           "master",
++		Transcript:       redact.AlreadyRedacted(opts.Transcript),
++		Prompts:          opts.Prompts,
++		FilesTouched:     opts.FilesTouched,
++		CheckpointsCount: 1,
++		Agent:            agentpkg.AgentTypeClaudeCode,
++		Model:            "claude-test-model",
++	}); err != nil {
++		t.Fatalf("write checkpoint: %v", err)
++	}
++	return repoRoot, cpID, base, target
++}
++
++func replayGitForTest(t *testing.T, repoRoot string, args ...string) string {
++	t.Helper()
++	out, err := replayGit(context.Background(), repoRoot, args...)
++	if err != nil {
++		t.Fatalf("git %v: %v", args, err)
++	}
++	return out
++}
++
++func stubReplayRunner(fn func(context.Context, ReplayRunnerRequest) (ReplayRunnerResult, error)) func() {
++	previous := replayRunnerFor
++	replayRunnerFor = func(agentName string) *replayRunnerFunc {
++		if agentName == fakeReplayAgent {
++			return &replayRunnerFunc{name: fakeReplayAgent, fn: fn}
++		}
++		return nil
++	}
++	return func() { replayRunnerFor = previous }
++}
+diff --git a/cmd/entire/cli/root.go b/cmd/entire/cli/root.go
+index d7b5d491..52319404 100644
+--- a/cmd/entire/cli/root.go
++++ b/cmd/entire/cli/root.go
+@@ -102,6 +102,8 @@ func NewRootCmd() *cobra.Command {
+ 	cmd.AddCommand(newEnableCmd())
+ 	cmd.AddCommand(newDisableCmd())
+ 	cmd.AddCommand(newStatusCmd())
++	cmd.AddCommand(newReplayCmd())
++	cmd.AddCommand(newEvalCmd())
+ 	cmd.AddCommand(newLoginCmd())
+ 	cmd.AddCommand(newLogoutCmd())
+ 	cmd.AddCommand(newVersionCmd())

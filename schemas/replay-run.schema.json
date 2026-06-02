@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suhaanthayyil/entire-replay-lab/schemas/replay-run.schema.json",
+  "title": "ReplayRun",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "spec",
+    "agent",
+    "status",
+    "changed_files",
+    "test",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "spec": {
+      "$ref": "#/$defs/replay_spec"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "running",
+        "skipped"
+      ]
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "finished_at": {
+      "type": "string"
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "worktree_path": {
+      "type": "string"
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "diff": {
+      "type": "string"
+    },
+    "diff_truncated": {
+      "type": "boolean"
+    },
+    "test": {
+      "$ref": "#/$defs/test_run"
+    },
+    "metrics": {
+      "$ref": "#/$defs/metrics"
+    },
+    "token_usage": {
+      "$ref": "#/$defs/token_usage"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "error": {
+      "type": "string"
+    },
+    "output": {
+      "type": "string"
+    },
+    "output_truncated": {
+      "type": "boolean"
+    },
+    "result_path": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "replay_spec": {
+      "type": "object",
+      "required": [
+        "checkpoint_id",
+        "prompt",
+        "target_commit",
+        "base_commit",
+        "files_touched"
+      ],
+      "properties": {
+        "checkpoint_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "target_commit": {
+          "type": "string"
+        },
+        "base_commit": {
+          "type": "string"
+        },
+        "files_touched": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "original_agent": {
+          "type": "string"
+        },
+        "original_model": {
+          "type": "string"
+        },
+        "token_usage": {
+          "$ref": "#/$defs/token_usage"
+        }
+      }
+    },
+    "test_run": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "skipped"
+          ]
+        },
+        "command": {
+          "type": "string"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "output": {
+          "type": "string"
+        },
+        "output_truncated": {
+          "type": "boolean"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "file_precision",
+        "file_recall",
+        "file_overlap",
+        "risk_score",
+        "semantic_available"
+      ],
+      "properties": {
+        "file_precision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "file_recall": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "file_overlap": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extra_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risky_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missing_tests": {
+          "type": "boolean"
+        },
+        "risk_score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "semantic_available": {
+          "type": "boolean"
+        },
+        "semantic_similarity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "token_usage": {
+      "type": "object",
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_creation_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_read_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

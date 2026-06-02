@@ -16,3 +16,9 @@ Also been working on Entire Replay Lab: it turns past Entire checkpoints into pr
 
 Repo: https://github.com/suhaanthayyil/entire-replay-lab
 ```
+
+Slightly more technical:
+
+```text
+The repo is now set up as a proper standalone project with README, architecture docs, demo steps, JSON examples/schemas, CI, and a reproducible patch/build flow that applies Replay Lab to a known Entire CLI base commit.
+```
