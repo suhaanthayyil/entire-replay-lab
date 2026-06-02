@@ -9,3 +9,4 @@
 - Added a doctor script and FAQ for local setup validation.
 - Added a smoke script plus acceptance and product-brief docs.
 - Added dependency-free JSON example validation against local schemas.
+- Updated CI to Node 24-based GitHub Actions and disabled unused Go caching.
