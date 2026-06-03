@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.31 - 2026-06-03
+
+- Hardened `entire eval run --from-checkpoints --limit` so non-positive limits
+  fail before checkpoint discovery instead of expanding to every checkpoint.
+- Added binary-level command-surface coverage for the new limit validation.
+- Fixed `scripts/refresh-patch.sh` so patch regeneration includes new Replay
+  Lab files from a dirty local CLI checkout without mutating its real git index.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.30 - 2026-06-03
 
 - Hardened the saved-report fixture so missing replay and eval report IDs must

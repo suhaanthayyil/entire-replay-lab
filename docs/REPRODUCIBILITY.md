@@ -12,7 +12,7 @@ The shared defaults live in `scripts/replay-lab-env.sh`:
 ENTIRE_CLI_REPO=https://github.com/entireio/cli.git
 ENTIRE_CLI_REF=e858fb537e70b8008a10f712cb73588cb67aacf2
 ENTIRE_REPLAY_PATCH=patches/entire-replay-lab.patch
-ENTIRE_REPLAY_PATCH_SHA256=3a5849fcae8d9fe8a84fd67d745b85b22b813620cd1610a36eb4f1585366e4de
+ENTIRE_REPLAY_PATCH_SHA256=01457c3f23877d32444fdcde4becaf9b9cb26ad461ba43a350c653fba3e38109
 ```
 
 `build-cli.sh`, `check-patch.sh`, and `refresh-patch.sh` all source that file.
@@ -40,12 +40,14 @@ This checks:
 
 ## Refreshing The Patch
 
-When regenerating the patch, `refresh-patch.sh` defaults to diffing against the
-pinned `ENTIRE_CLI_REF`, not the moving `origin/main` branch:
+When regenerating the patch, `refresh-patch.sh` defaults to diffing the current
+local checkout against the pinned `ENTIRE_CLI_REF`, not the moving
+`origin/main` branch:
 
 ```bash
 ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab ./scripts/refresh-patch.sh
 ```
 
 That keeps the patch anchored to the same base that CI and release checks build
-against.
+against. The helper also accounts for new Replay Lab files in a dirty local
+checkout without mutating that checkout's real git index.

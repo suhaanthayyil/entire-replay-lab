@@ -70,7 +70,8 @@ To verify the built command surface:
 
 This checks the replay/eval command tree plus the required public flags used by
 the README, demo, smoke, and release docs. It also verifies invalid replay
-agent selections fail with clear messages.
+agent selections fail with clear messages, and that non-positive
+`--from-checkpoints --limit` values fail before checkpoint discovery.
 
 To verify saved report rendering:
 
@@ -132,6 +133,10 @@ Refresh the patch from a local CLI checkout after changing the implementation:
 ```bash
 ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab ./scripts/refresh-patch.sh
 ```
+
+The refresh helper diffs the current local checkout against the pinned upstream
+base and includes new Replay Lab files without mutating the checkout's real git
+index.
 
 Remove generated binaries and temp clones:
 

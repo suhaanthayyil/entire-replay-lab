@@ -63,6 +63,8 @@ Proves:
   present
 - invalid replay agent selections fail with clear user-facing errors before
   any repo mutation
+- `entire eval run --from-checkpoints --limit 0` fails before checkpoint
+  discovery instead of expanding to every checkpoint
 - saved replay/eval reports can be rendered from result JSON in text and
   schema-valid JSON modes
 - missing replay/eval report IDs fail with clear `read ... report` errors in

@@ -65,7 +65,9 @@ slice.
 ### `./scripts/check-command-surface.sh`
 
 Checks that the built Replay Lab binary exposes the expected `replay` and `eval`
-commands, subcommands, and required user-facing flags.
+commands, subcommands, required user-facing flags, and important CLI
+negative-path errors such as invalid replay agents and non-positive
+`--from-checkpoints --limit` values.
 
 ```bash
 ./scripts/build-cli.sh
@@ -235,7 +237,9 @@ and published GitHub releases match.
 
 ### `./scripts/refresh-patch.sh`
 
-Regenerates `patches/entire-replay-lab.patch` from a local CLI checkout.
+Regenerates `patches/entire-replay-lab.patch` from a local CLI checkout. The
+helper diffs the current checkout against the pinned upstream base and includes
+new Replay Lab files without changing that checkout's real git index.
 
 ```bash
 ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab ./scripts/refresh-patch.sh
@@ -305,7 +309,7 @@ Useful flags:
 
 - `--checkpoint <id>` repeatable
 - `--from-checkpoints`
-- `--limit <n>`
+- `--limit <n>` positive checkpoint count for `--from-checkpoints`
 - `--agent <agents>` or `--agent all`
 - `--model <model>`
 - `--test-cmd <command>`

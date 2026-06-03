@@ -18,12 +18,29 @@ fi
 
 mkdir -p "$(dirname "$ENTIRE_REPLAY_PATCH")"
 
-git -C "$ENTIRE_CLI_SOURCE" diff --binary "$ENTIRE_CLI_BASE"...HEAD -- \
+PATCH_PATHS=(
   README.md \
   cmd/entire/cli/replay.go \
   cmd/entire/cli/replay_test.go \
-  cmd/entire/cli/root.go \
-  > "$ENTIRE_REPLAY_PATCH"
+  cmd/entire/cli/root.go
+)
+
+INDEX_FILE="$(git -C "$ENTIRE_CLI_SOURCE" rev-parse --git-path index)"
+TMP_INDEX="$(mktemp "${TMPDIR:-/tmp}/entire-replay-refresh-index.XXXXXX")"
+cp "$INDEX_FILE" "$TMP_INDEX"
+cleanup() {
+  rm -f "$TMP_INDEX"
+}
+trap cleanup EXIT
+
+for path in "${PATCH_PATHS[@]}"; do
+  if [[ -e "$ENTIRE_CLI_SOURCE/$path" ]]; then
+    GIT_INDEX_FILE="$TMP_INDEX" git -C "$ENTIRE_CLI_SOURCE" add --intent-to-add -- "$path"
+  fi
+done
+
+GIT_INDEX_FILE="$TMP_INDEX" git -C "$ENTIRE_CLI_SOURCE" diff --binary "$ENTIRE_CLI_BASE" -- \
+  "${PATCH_PATHS[@]}" >"$ENTIRE_REPLAY_PATCH"
 
 test -s "$ENTIRE_REPLAY_PATCH"
 echo "Wrote $ENTIRE_REPLAY_PATCH"
