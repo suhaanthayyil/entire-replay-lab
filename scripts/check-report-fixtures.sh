@@ -65,6 +65,14 @@ if eval_run.get("schema_version") != 1:
     raise SystemExit("eval report JSON returned the wrong schema_version")
 if [summary.get("agent") for summary in eval_run.get("summaries", [])] != ["claude-code", "codex"]:
     raise SystemExit("eval report JSON returned unexpected summaries")
+if len(eval_run.get("runs", [])) != 2:
+    raise SystemExit("eval report JSON did not preserve embedded replay runs")
+first_run = eval_run["runs"][0]
+if first_run.get("id") != "rpl_7a1d4c9e":
+    raise SystemExit("eval report JSON returned unexpected first embedded replay run")
+subagent_tokens = first_run.get("token_usage", {}).get("subagent_tokens", {})
+if subagent_tokens.get("input_tokens") != 1200:
+    raise SystemExit("eval report JSON did not preserve recursive token usage")
 if eval_run.get("result_path", "").endswith("evl_a12c0f44.json") is False:
     raise SystemExit("eval report JSON did not populate result_path")
 PY

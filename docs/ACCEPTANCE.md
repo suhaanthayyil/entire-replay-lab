@@ -62,6 +62,8 @@ Proves:
   present
 - saved replay/eval reports can be rendered from result JSON in text and
   schema-valid JSON modes
+- eval report schemas validate embedded replay runs with the same ReplayRun
+  contract used for standalone replay reports
 
 ## Local Machine Is Ready For A Live Replay
 

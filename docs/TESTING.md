@@ -15,6 +15,7 @@ It checks:
 - JSON examples parse successfully.
 - JSON examples validate against the local schemas, including rejection of
   undocumented additional fields where the schema is closed.
+- Eval examples validate each embedded replay run against the ReplayRun schema.
 - Schemas parse successfully.
 - Project metadata, README badges, and MIT license text stay consistent.
 - Main docs exist and include the important setup sections.
@@ -78,6 +79,7 @@ To verify saved report rendering:
 This seeds the example result JSON into a temporary git repo and runs
 `entire replay report` plus `entire eval report` in text and `--json` modes.
 The generated `--json` output is validated against the local schemas.
+The eval report fixture also proves embedded replay runs stay schema-valid.
 
 After publishing a release, verify release docs, local tags, and GitHub releases:
 

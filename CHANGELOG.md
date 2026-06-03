@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.19 - 2026-06-03
+
+- Validated embedded eval replay runs through the ReplayRun schema.
+- Added local cross-schema `$ref` support to the example/schema validator.
+
 ## v0.1.18 - 2026-06-03
 
 - Validated rendered Replay/Eval report JSON against local schemas.

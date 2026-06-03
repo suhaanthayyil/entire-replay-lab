@@ -37,7 +37,10 @@
       }
     },
     "runs": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "$ref": "replay-run.schema.json"
+      }
     },
     "result_path": {
       "type": "string"

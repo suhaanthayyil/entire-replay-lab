@@ -17,7 +17,7 @@ python3 ./scripts/validate-examples.py
 
 The validator is intentionally dependency-free and supports the JSON Schema
 features used by this repo, including `additionalProperties: false` for the
-checked example payloads.
+checked example payloads and local cross-schema `$ref` links.
 
 ## ReplayRun
 
@@ -65,19 +65,47 @@ checked example payloads.
   "summaries": [
     {
       "agent": "claude-code",
-      "runs": 3,
-      "passed": 3,
+      "runs": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
       "pass_rate": 100,
-      "avg_file_recall": 92,
-      "avg_file_precision": 88,
-      "avg_semantic_similarity": 81,
-      "risk_score": 1,
+      "avg_file_recall": 100,
+      "avg_file_precision": 100,
+      "risk_score": 0,
       "avg_duration_ms": 134000
     }
   ],
-  "runs": []
+  "runs": [
+    {
+      "schema_version": 1,
+      "id": "rpl_7a1d4c9e",
+      "spec": {
+        "checkpoint_id": "9a91ce5c55f2",
+        "prompt": "Update validate_token to support issuer checks.",
+        "target_commit": "2f9c481",
+        "base_commit": "a77cd65",
+        "files_touched": ["src/auth.py"]
+      },
+      "agent": "claude-code",
+      "status": "passed",
+      "changed_files": ["src/auth.py"],
+      "test": {
+        "status": "passed"
+      },
+      "metrics": {
+        "file_precision": 100,
+        "file_recall": 100,
+        "file_overlap": 1,
+        "risk_score": 0,
+        "semantic_available": true
+      }
+    }
+  ]
 }
 ```
+
+`ReplayEvalRun.runs[]` uses the same schema contract as a saved `ReplayRun`.
 
 ## Stability Rules
 

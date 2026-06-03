@@ -112,8 +112,8 @@ patched CLI build, command surface checks, report fixtures, and patch tests.
 
 ### `./scripts/validate-examples.py`
 
-Validates example JSON payloads against the local schema files. It can also
-validate explicit JSON/schema pairs.
+Validates example JSON payloads against the local schema files, including local
+cross-schema references. It can also validate explicit JSON/schema pairs.
 
 ```bash
 python3 ./scripts/validate-examples.py

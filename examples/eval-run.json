@@ -10,36 +10,142 @@
   "summaries": [
     {
       "agent": "claude-code",
-      "runs": 3,
-      "passed": 3,
+      "runs": 1,
+      "passed": 1,
       "failed": 0,
       "skipped": 0,
       "pass_rate": 100,
-      "avg_file_recall": 92,
-      "avg_file_precision": 88,
-      "avg_semantic_similarity": 81,
-      "semantic_runs": 3,
+      "avg_file_recall": 100,
+      "avg_file_precision": 100,
+      "avg_semantic_similarity": 86,
+      "semantic_runs": 1,
       "avg_duration_ms": 134000,
-      "risk_score": 1,
-      "input_tokens": 48000,
-      "output_tokens": 9000
+      "risk_score": 0,
+      "input_tokens": 54000,
+      "output_tokens": 8700
     },
     {
       "agent": "codex",
-      "runs": 3,
-      "passed": 2,
+      "runs": 1,
+      "passed": 0,
       "failed": 1,
       "skipped": 0,
-      "pass_rate": 67,
-      "avg_file_recall": 80,
-      "avg_file_precision": 91,
-      "avg_semantic_similarity": 74,
-      "semantic_runs": 3,
+      "pass_rate": 0,
+      "avg_file_recall": 100,
+      "avg_file_precision": 50,
+      "avg_semantic_similarity": 0,
+      "semantic_runs": 0,
       "avg_duration_ms": 101000,
       "risk_score": 3,
       "input_tokens": 35000,
       "output_tokens": 7000
     }
   ],
-  "runs": []
+  "runs": [
+    {
+      "schema_version": 1,
+      "id": "rpl_7a1d4c9e",
+      "spec": {
+        "checkpoint_id": "9a91ce5c55f2",
+        "session_id": "019e6ba4",
+        "prompt": "Update validate_token to support issuer checks.",
+        "target_commit": "2f9c481",
+        "base_commit": "a77cd65",
+        "files_touched": [
+          "src/auth.py"
+        ],
+        "original_agent": "codex",
+        "original_model": "gpt-5.5"
+      },
+      "agent": "claude-code",
+      "model": "sonnet",
+      "status": "passed",
+      "started_at": "2026-06-02T17:30:00Z",
+      "finished_at": "2026-06-02T17:32:14Z",
+      "duration_ms": 134000,
+      "changed_files": [
+        "src/auth.py"
+      ],
+      "diff_truncated": false,
+      "test": {
+        "status": "passed",
+        "command": "python3 -m pytest",
+        "duration_ms": 4120
+      },
+      "metrics": {
+        "file_precision": 100,
+        "file_recall": 100,
+        "file_overlap": 1,
+        "risk_score": 0,
+        "semantic_available": true,
+        "semantic_similarity": 86
+      },
+      "token_usage": {
+        "input_tokens": 42000,
+        "cache_creation_tokens": 0,
+        "cache_read_tokens": 12000,
+        "output_tokens": 8500,
+        "api_call_count": 1,
+        "subagent_tokens": {
+          "input_tokens": 1200,
+          "cache_creation_tokens": 0,
+          "cache_read_tokens": 800,
+          "output_tokens": 200,
+          "api_call_count": 1
+        }
+      }
+    },
+    {
+      "schema_version": 1,
+      "id": "rpl_b45e9d02",
+      "spec": {
+        "checkpoint_id": "9a91ce5c55f2",
+        "session_id": "019e6ba4",
+        "prompt": "Update validate_token to support issuer checks.",
+        "target_commit": "2f9c481",
+        "base_commit": "a77cd65",
+        "files_touched": [
+          "src/auth.py"
+        ],
+        "original_agent": "codex",
+        "original_model": "gpt-5.5"
+      },
+      "agent": "codex",
+      "model": "gpt-5",
+      "status": "failed",
+      "started_at": "2026-06-02T17:34:00Z",
+      "finished_at": "2026-06-02T17:35:41Z",
+      "duration_ms": 101000,
+      "changed_files": [
+        "auth/config.yaml",
+        "src/auth.py"
+      ],
+      "diff_truncated": false,
+      "test": {
+        "status": "skipped"
+      },
+      "metrics": {
+        "file_precision": 50,
+        "file_recall": 100,
+        "file_overlap": 1,
+        "extra_files": [
+          "auth/config.yaml"
+        ],
+        "risky_files": [
+          "auth/config.yaml"
+        ],
+        "missing_tests": true,
+        "risk_score": 3,
+        "semantic_available": false
+      },
+      "token_usage": {
+        "input_tokens": 35000,
+        "cache_creation_tokens": 0,
+        "cache_read_tokens": 0,
+        "output_tokens": 7000,
+        "api_call_count": 1
+      },
+      "error": "Replay changed auth config outside the original checkpoint scope."
+    }
+  ]
 }
