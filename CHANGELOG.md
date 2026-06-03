@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.22 - 2026-06-03
+
+- Added the all-agent eval fixture to GitHub Actions CI.
+- Made repo verification assert that CI keeps the all-agent eval gate.
+- Updated the pull request template to call out the fixture for eval or agent
+  behavior changes.
+
 ## v0.1.21 - 2026-06-03
 
 - Added a binary-level all-agent eval fixture that runs

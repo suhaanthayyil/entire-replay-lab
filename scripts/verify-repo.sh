@@ -119,6 +119,7 @@ for file in \
   "$ROOT/patches/entire-replay-lab.patch" \
   "$ROOT/schemas/replay-run.schema.json" \
   "$ROOT/schemas/eval-run.schema.json" \
+  "$ROOT/.github/workflows/ci.yml" \
   "$ROOT/scripts/check-all-agent-eval.sh" \
   "$ROOT/scripts/check-command-surface.sh" \
   "$ROOT/scripts/check-report-fixtures.sh" \
@@ -145,6 +146,7 @@ require_contains "One-Command Smoke" "$ROOT/docs/ACCEPTANCE.md"
 require_contains "private benchmark" "$ROOT/docs/PRODUCT_BRIEF.md"
 require_contains "Release Check" "$ROOT/docs/RELEASE.md"
 require_contains "Pinned Inputs" "$ROOT/docs/REPRODUCIBILITY.md"
+require_contains "Check all-agent eval fixture" "$ROOT/.github/workflows/ci.yml"
 require_contains "all-agent eval command fixture" "$ROOT/scripts/check-all-agent-eval.sh"
 require_contains "Replay/Eval command surface" "$ROOT/scripts/check-command-surface.sh"
 require_contains "Replay/Eval report fixture" "$ROOT/scripts/check-report-fixtures.sh"

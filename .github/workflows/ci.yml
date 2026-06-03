@@ -43,5 +43,7 @@ jobs:
         run: ./scripts/check-command-surface.sh
       - name: Check Replay/Eval report fixtures
         run: ./scripts/check-report-fixtures.sh
+      - name: Check all-agent eval fixture
+        run: ./scripts/check-all-agent-eval.sh
       - name: Check Replay Lab patch tests
         run: ./scripts/check-patch.sh
