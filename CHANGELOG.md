@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.32 - 2026-06-03
+
+- Added `scripts/check-refresh-patch.sh` to prove patch refresh reproduces the
+  checked-in patch from a dirty patched CLI checkout without mutating the
+  source checkout's git status.
+- Wired the patch-refresh regression into smoke, release checks, GitHub Actions
+  CI, repo verification, and docs.
+
 ## v0.1.31 - 2026-06-03
 
 - Hardened `entire eval run --from-checkpoints --limit` so non-positive limits

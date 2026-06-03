@@ -65,6 +65,8 @@ Proves:
   any repo mutation
 - `entire eval run --from-checkpoints --limit 0` fails before checkpoint
   discovery instead of expanding to every checkpoint
+- patch refresh reproduces the checked-in patch from the normal dirty patched
+  CLI checkout without mutating that checkout's git status
 - saved replay/eval reports can be rendered from result JSON in text and
   schema-valid JSON modes
 - missing replay/eval report IDs fail with clear `read ... report` errors in

@@ -62,6 +62,16 @@ slice.
 ./scripts/check-patch.sh
 ```
 
+### `./scripts/check-refresh-patch.sh`
+
+Applies the checked-in patch to a fresh temporary CLI clone, refreshes a patch
+from that dirty checkout, and verifies the refreshed patch byte-matches the
+checked-in artifact without changing the source checkout's git status.
+
+```bash
+./scripts/check-refresh-patch.sh
+```
+
 ### `./scripts/check-command-surface.sh`
 
 Checks that the built Replay Lab binary exposes the expected `replay` and `eval`
@@ -115,6 +125,7 @@ Runs the main proof path:
 
 - repo verification
 - patched CLI build
+- patch refresh regression
 - build lock concurrency
 - Replay/Eval command-surface checks
 - all-agent eval fixture
@@ -137,8 +148,8 @@ not run the replay itself.
 ### `./scripts/release-check.sh`
 
 Runs the release-ready proof path: repo validators, reproducibility checks,
-patched CLI build, build-lock concurrency, command surface checks, report
-fixtures, the all-agent eval fixture, and patch tests.
+patch-refresh regression, patched CLI build, build-lock concurrency, command
+surface checks, report fixtures, the all-agent eval fixture, and patch tests.
 
 ```bash
 ./scripts/release-check.sh

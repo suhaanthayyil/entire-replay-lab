@@ -61,6 +61,16 @@ To verify the patch file surface:
 ./scripts/verify-patch-manifest.sh
 ```
 
+To verify patch regeneration from the normal dirty patched checkout:
+
+```bash
+./scripts/check-refresh-patch.sh
+```
+
+This proves `refresh-patch.sh` reproduces the checked-in patch and does not
+mutate the source checkout's git status while including untracked Replay Lab
+files.
+
 To verify the built command surface:
 
 ```bash
@@ -152,9 +162,9 @@ Run the main local proof path:
 ./scripts/smoke.sh /path/to/entire-enabled/repo
 ```
 
-This runs repo verification, patched CLI build, build-lock concurrency,
-command-surface checks, report fixtures, all-agent eval fixtures, doctor, and
-fresh-clone patch tests.
+This runs repo verification, patched CLI build, patch-refresh regression,
+build-lock concurrency, command-surface checks, report fixtures, all-agent eval
+fixtures, doctor, and fresh-clone patch tests.
 
 ## Live Validation
 

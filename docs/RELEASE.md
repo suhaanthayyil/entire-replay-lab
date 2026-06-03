@@ -14,8 +14,9 @@ It verifies the repository package, project metadata, MIT license hygiene,
 example schemas, Markdown links/fences, portability of reusable docs/scripts,
 helper script hygiene, patched CLI build, Replay/Eval command surface, saved
 report fixtures, build-lock concurrency, the all-agent eval fixture,
-release-note consistency, pinned reproducibility metadata, patch manifest, and
-fresh-clone patch tests without launching a live coding agent.
+release-note consistency, pinned reproducibility metadata, patch manifest,
+patch-refresh reproducibility, and fresh-clone patch tests without launching a
+live coding agent.
 
 ## Before Tagging
 

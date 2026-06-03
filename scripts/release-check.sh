@@ -43,6 +43,10 @@ echo "== Release check: patch manifest =="
 "$ROOT/scripts/verify-patch-manifest.sh"
 
 echo
+echo "== Release check: patch refresh =="
+"$ROOT/scripts/check-refresh-patch.sh"
+
+echo
 echo "== Release check: patched CLI build =="
 "$ROOT/scripts/build-cli.sh"
 

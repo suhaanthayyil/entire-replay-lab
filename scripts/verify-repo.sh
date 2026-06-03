@@ -124,6 +124,7 @@ for file in \
   "$ROOT/scripts/check-build-lock.sh" \
   "$ROOT/scripts/check-all-agent-eval.sh" \
   "$ROOT/scripts/check-command-surface.sh" \
+  "$ROOT/scripts/check-refresh-patch.sh" \
   "$ROOT/scripts/check-report-fixtures.sh" \
   "$ROOT/scripts/replay-lab-env.sh" \
   "$ROOT/scripts/validate-doc-links.py" \
@@ -150,10 +151,12 @@ require_contains "Release Check" "$ROOT/docs/RELEASE.md"
 require_contains "Pinned Inputs" "$ROOT/docs/REPRODUCIBILITY.md"
 require_contains "Check all-agent eval fixture" "$ROOT/.github/workflows/ci.yml"
 require_contains "Check build lock" "$ROOT/.github/workflows/ci.yml"
+require_contains "Check patch refresh helper" "$ROOT/.github/workflows/ci.yml"
 require_contains "build-cli.lock" "$ROOT/scripts/build-cli.sh"
 require_contains "build lock handles concurrent builds" "$ROOT/scripts/check-build-lock.sh"
 require_contains "all-agent eval command fixture" "$ROOT/scripts/check-all-agent-eval.sh"
 require_contains "Replay/Eval command surface" "$ROOT/scripts/check-command-surface.sh"
+require_contains "patch refresh reproduces the checked-in patch" "$ROOT/scripts/check-refresh-patch.sh"
 require_contains "Replay/Eval report fixture" "$ROOT/scripts/check-report-fixtures.sh"
 require_contains "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
 require_contains "cursor-agent" "$ROOT/scripts/doctor.sh"

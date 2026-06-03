@@ -35,6 +35,8 @@ jobs:
         run: ./scripts/verify-reproducibility.sh
       - name: Verify patch manifest
         run: ./scripts/verify-patch-manifest.sh
+      - name: Check patch refresh helper
+        run: ./scripts/check-refresh-patch.sh
       - name: Shell syntax check
         run: bash -n scripts/*.sh
       - name: Build patched Entire CLI
