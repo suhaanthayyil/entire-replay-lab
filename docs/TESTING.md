@@ -20,6 +20,7 @@ It checks:
 - Local Markdown links and anchors resolve.
 - Markdown code fences are closed, use expected languages, and JSON snippets
   parse.
+- Reusable docs and scripts avoid machine-specific local paths.
 - Changelog and release-note files stay in sync.
 - Reproducibility metadata is in sync.
 - The Replay Lab patch touches only the expected upstream files.
@@ -83,7 +84,7 @@ After publishing a release, verify release docs, local tags, and GitHub releases
 To use a local CLI checkout that already has Replay Lab applied:
 
 ```bash
-ENTIRE_CLI_SOURCE=/Users/suhaan/Documents/Coding/cli-replay-lab ./scripts/build-cli.sh
+ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab ./scripts/build-cli.sh
 ```
 
 To use a different fork or branch:
@@ -106,7 +107,7 @@ Run the patch against a fresh temp clone and execute the Replay Lab test slice:
 Refresh the patch from a local CLI checkout after changing the implementation:
 
 ```bash
-ENTIRE_CLI_SOURCE=/Users/suhaan/Documents/Coding/cli-replay-lab ./scripts/refresh-patch.sh
+ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab ./scripts/refresh-patch.sh
 ```
 
 Remove generated binaries and temp clones:
@@ -120,7 +121,7 @@ Remove generated binaries and temp clones:
 Run the main local proof path:
 
 ```bash
-./scripts/smoke.sh ~/Documents/Ultron
+./scripts/smoke.sh /path/to/entire-enabled/repo
 ```
 
 This runs repo verification, patched CLI build, command-surface checks, doctor,
@@ -131,20 +132,20 @@ and fresh-clone patch tests.
 Use a repo that already has Entire checkpoints:
 
 ```bash
-cd ~/Documents/Ultron
+cd /path/to/entire-enabled/repo
 entire checkpoint list
 ```
 
 Before running an agent replay, check local prerequisites:
 
 ```bash
-./scripts/doctor.sh ~/Documents/Ultron
+./scripts/doctor.sh /path/to/entire-enabled/repo
 ```
 
 Replay one checkpoint:
 
 ```bash
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire replay checkpoint <checkpoint-id> \
+/path/to/entire-replay-lab/bin/entire replay checkpoint <checkpoint-id> \
   --agent claude-code \
   --test-cmd "python3 -m pytest" \
   --keep-worktree
@@ -153,7 +154,7 @@ Replay one checkpoint:
 Run a small eval:
 
 ```bash
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire eval run \
+/path/to/entire-replay-lab/bin/entire eval run \
   --from-checkpoints \
   --limit 3 \
   --agent claude-code,codex \

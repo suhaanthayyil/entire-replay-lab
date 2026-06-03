@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="${1:-$HOME/Documents/Ultron}"
-ENTIRE_BIN="${ENTIRE_BIN:-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="${1:-/path/to/entire-enabled/repo}"
+ENTIRE_BIN="${ENTIRE_BIN:-$ROOT/bin/entire}"
 TEST_CMD="${TEST_CMD:-python3 -m pytest}"
 
 cat <<EOF

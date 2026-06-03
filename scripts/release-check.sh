@@ -23,6 +23,10 @@ echo "== Release check: markdown fence validation =="
 python3 "$ROOT/scripts/validate-markdown-fences.py"
 
 echo
+echo "== Release check: portability validation =="
+python3 "$ROOT/scripts/validate-portability.py"
+
+echo
 echo "== Release check: release docs validation =="
 python3 "$ROOT/scripts/validate-release-docs.py"
 

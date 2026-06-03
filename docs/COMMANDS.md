@@ -56,7 +56,7 @@ Checks local tools, launchable agents, the built Replay Lab binary, and
 optionally a target Entire-enabled repo.
 
 ```bash
-./scripts/doctor.sh ~/Documents/Ultron
+./scripts/doctor.sh /path/to/entire-enabled/repo
 ```
 
 ### `./scripts/smoke.sh [repo]`
@@ -70,7 +70,7 @@ Runs the main proof path:
 - fresh-clone patch tests
 
 ```bash
-./scripts/smoke.sh ~/Documents/Ultron
+./scripts/smoke.sh /path/to/entire-enabled/repo
 ```
 
 ### `./scripts/validate-examples.py`
@@ -105,6 +105,16 @@ syntax across README and docs.
 
 ```bash
 python3 ./scripts/validate-markdown-fences.py
+```
+
+### `./scripts/validate-portability.py`
+
+Validates that reusable docs and scripts avoid machine-specific local paths.
+Historical release notes are skipped because they intentionally record the
+local evidence command that was run.
+
+```bash
+python3 ./scripts/validate-portability.py
 ```
 
 ### `./scripts/verify-reproducibility.sh`

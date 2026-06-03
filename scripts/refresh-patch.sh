@@ -4,8 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/replay-lab-env.sh"
 
-: "${ENTIRE_CLI_SOURCE:=/Users/suhaan/Documents/Coding/cli-replay-lab}"
 : "${ENTIRE_CLI_BASE:=$ENTIRE_CLI_REF}"
+
+if [[ -z "${ENTIRE_CLI_SOURCE:-}" ]]; then
+  echo "Set ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab before refreshing the patch." >&2
+  exit 1
+fi
 
 if [[ ! -d "$ENTIRE_CLI_SOURCE/.git" && ! -f "$ENTIRE_CLI_SOURCE/.git" ]]; then
   echo "ENTIRE_CLI_SOURCE is not a git checkout: $ENTIRE_CLI_SOURCE" >&2

@@ -1,4 +1,4 @@
-.PHONY: verify metadata validate doc-links markdown-fences release-docs reproducibility patch-manifest command-surface report-fixtures release-state build demo doctor check-patch smoke release-check clean
+.PHONY: verify metadata validate doc-links markdown-fences portability release-docs reproducibility patch-manifest command-surface report-fixtures release-state build demo doctor check-patch smoke release-check clean
 
 verify:
 	./scripts/verify-repo.sh
@@ -14,6 +14,9 @@ doc-links:
 
 markdown-fences:
 	python3 ./scripts/validate-markdown-fences.py
+
+portability:
+	python3 ./scripts/validate-portability.py
 
 release-docs:
 	python3 ./scripts/validate-release-docs.py

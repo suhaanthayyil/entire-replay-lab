@@ -14,14 +14,14 @@ The shortest pitch:
 Build the Replay Lab-enabled CLI:
 
 ```bash
-cd /Users/suhaan/Documents/Coding/entire-replay-lab
+cd /path/to/entire-replay-lab
 ./scripts/build-cli.sh
 ```
 
 Choose a repo with checkpoints:
 
 ```bash
-cd ~/Documents/Ultron
+cd /path/to/entire-enabled/repo
 entire checkpoint list
 ```
 
@@ -30,7 +30,7 @@ Pick a checkpoint id from the list.
 ## One Checkpoint Replay
 
 ```bash
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire replay checkpoint <checkpoint-id> \
+/path/to/entire-replay-lab/bin/entire replay checkpoint <checkpoint-id> \
   --agent claude-code \
   --test-cmd "python3 -m pytest" \
   --keep-worktree
@@ -46,7 +46,7 @@ Point out:
 ## Multi-Agent Eval
 
 ```bash
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire eval run \
+/path/to/entire-replay-lab/bin/entire eval run \
   --from-checkpoints \
   --limit 3 \
   --agent claude-code,codex \
@@ -62,15 +62,15 @@ Point out:
 ## Saved Reports
 
 ```bash
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire replay report <run-id>
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire eval report <eval-id>
+/path/to/entire-replay-lab/bin/entire replay report <run-id>
+/path/to/entire-replay-lab/bin/entire eval report <eval-id>
 ```
 
 For JSON:
 
 ```bash
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire replay report <run-id> --json
-/Users/suhaan/Documents/Coding/entire-replay-lab/bin/entire eval report <eval-id> --json
+/path/to/entire-replay-lab/bin/entire replay report <run-id> --json
+/path/to/entire-replay-lab/bin/entire eval report <eval-id> --json
 ```
 
 ## CEO-Friendly Use Case

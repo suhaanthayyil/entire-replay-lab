@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.15 - 2026-06-03
+
+- Added portability validation for reusable docs and scripts.
+- Removed personal local paths from demo, testing, and patch-refresh helpers.
+
 ## v0.1.14 - 2026-06-03
 
 - Added project metadata and MIT license hygiene validation.

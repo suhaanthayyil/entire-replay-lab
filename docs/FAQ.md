@@ -59,8 +59,8 @@ Build the binary, then run:
 ./scripts/doctor.sh /path/to/an/entire-enabled/repo
 ```
 
-For Suhaan's local demo repo:
+For a local demo repo:
 
 ```bash
-./scripts/doctor.sh ~/Documents/Ultron
+./scripts/doctor.sh /path/to/entire-enabled/repo
 ```

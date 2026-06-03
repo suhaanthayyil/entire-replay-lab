@@ -72,7 +72,7 @@ ENTIRE_CLI_SOURCE=/path/to/cli-replay-lab ./scripts/build-cli.sh
 Then run it inside a repo that already has Entire checkpoints:
 
 ```bash
-cd ~/Documents/Ultron
+cd /path/to/entire-enabled/repo
 entire checkpoint list
 
 /path/to/entire-replay-lab/bin/entire replay checkpoint <checkpoint-id> \
@@ -196,6 +196,7 @@ scripts/
   validate-doc-links.py Validate local Markdown links and anchors
   validate-examples.py Validate example JSON against local schemas
   validate-markdown-fences.py Validate Markdown fences and JSON snippets
+  validate-portability.py Validate reusable docs/scripts avoid local machine paths
   validate-project-metadata.py Validate MIT license and repo identity text
   validate-release-docs.py Validate changelog and release-note consistency
   verify-patch-manifest.sh Check the patch touches only expected upstream files
