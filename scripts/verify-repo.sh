@@ -141,6 +141,7 @@ require_contains "Replay/Eval report fixture" "$ROOT/scripts/check-report-fixtur
 require_contains "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
 require_contains "Release check" "$ROOT/scripts/release-check.sh"
 require_contains "ENTIRE_CLI_DEFAULT_REF" "$ROOT/scripts/replay-lab-env.sh"
+require_contains "ENTIRE_REPLAY_DEFAULT_PATCH_SHA256" "$ROOT/scripts/replay-lab-env.sh"
 require_contains "Validate local Markdown links" "$ROOT/scripts/validate-doc-links.py"
 require_contains "Validate Replay Lab example JSON" "$ROOT/scripts/validate-examples.py"
 require_contains "Validate changelog and release-note consistency" "$ROOT/scripts/validate-release-docs.py"

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.9 - 2026-06-03
+
+- Added enforced SHA-256 verification for the Replay Lab patch artifact.
+
 ## v0.1.8 - 2026-06-03
 
 - Added binary-level Replay/Eval report fixture verification.

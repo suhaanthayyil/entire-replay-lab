@@ -43,6 +43,8 @@ require_contains "$ENTIRE_CLI_DEFAULT_REF" "$ROOT/docs/ARCHITECTURE.md"
 require_contains "$ENTIRE_CLI_DEFAULT_REF" "$ROOT/docs/TESTING.md"
 require_contains "$ENTIRE_CLI_DEFAULT_REF" "$ROOT/docs/REPRODUCIBILITY.md"
 require_contains "ENTIRE_CLI_DEFAULT_REF" "$ROOT/scripts/replay-lab-env.sh"
+require_contains "ENTIRE_REPLAY_DEFAULT_PATCH_SHA256" "$ROOT/scripts/replay-lab-env.sh"
+require_contains "$ENTIRE_REPLAY_DEFAULT_PATCH_SHA256" "$ROOT/docs/REPRODUCIBILITY.md"
 
 if command -v shasum >/dev/null 2>&1; then
   PATCH_SHA="$(shasum -a 256 "$ENTIRE_REPLAY_PATCH" | awk '{print $1}')"
@@ -52,8 +54,23 @@ else
   PATCH_SHA="unavailable"
 fi
 
+if [[ -n "${ENTIRE_REPLAY_PATCH_SHA256:-}" ]]; then
+  if [[ "$PATCH_SHA" == "unavailable" ]]; then
+    echo "Cannot verify Replay Lab patch hash: no SHA-256 tool found." >&2
+    exit 1
+  fi
+  if [[ "$PATCH_SHA" != "$ENTIRE_REPLAY_PATCH_SHA256" ]]; then
+    echo "Replay Lab patch SHA-256 mismatch." >&2
+    echo "  expected: $ENTIRE_REPLAY_PATCH_SHA256" >&2
+    echo "  actual:   $PATCH_SHA" >&2
+    echo "If this is an intentional local experiment, set ENTIRE_REPLAY_PATCH_SHA256= to disable the hash pin." >&2
+    exit 1
+  fi
+fi
+
 echo "Replay Lab reproducibility inputs:"
 echo "  repo:  $ENTIRE_CLI_REPO"
 echo "  ref:   $ENTIRE_CLI_REF"
 echo "  patch: $ENTIRE_REPLAY_PATCH"
 echo "  sha256: $PATCH_SHA"
+echo "  expected_sha256: ${ENTIRE_REPLAY_PATCH_SHA256:-unverified}"
