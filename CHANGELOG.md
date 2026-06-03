@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.40 - 2026-06-03
+
+- Added saved replay warnings when an installed `entire-sem` command fails,
+  emits invalid JSON, or cannot complete semantic scoring.
+- Missing `entire-sem` still degrades quietly as an optional feature, while
+  installed-but-broken semantic scoring is now visible in reports.
+- Added focused Go coverage for persisted semantic-scoring failure warnings.
+- Updated acceptance, architecture, testing, FAQ, and reproducibility docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.39 - 2026-06-03
 
 - Split replay timeout handling into independent setup, agent, and test-command

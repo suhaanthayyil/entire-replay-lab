@@ -221,7 +221,7 @@ Run a small eval:
   warning, so operators can inspect or remove the leaked worktree.
 - Optional semantic scoring preserves kept replay worktree `HEAD` and index
   state while still seeing staged and untracked replay output.
-- Missing agents or missing `entire-sem` degrade clearly without corrupting the
-  repo.
+- Missing agents and missing `entire-sem` degrade clearly without corrupting the
+  repo; installed-but-failing `entire-sem` emits a saved warning.
 - `--agent all` covers every built-in Entire coder, with Pi shown as skipped
   until a safe non-interactive launch contract exists.

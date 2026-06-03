@@ -77,6 +77,8 @@ Proves:
   saved report
 - optional semantic scoring sees staged and untracked replay output without
   moving replay worktree `HEAD` or changing its real index state
+- if `entire-sem` is installed but semantic scoring fails, the saved report
+  includes a warning instead of silently looking like the tool is absent
 - patch refresh reproduces the checked-in patch from the normal dirty patched
   CLI checkout without mutating that checkout's git status
 - saved replay/eval reports can be rendered from result JSON in text and

@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..2be3e6f4
+index 00000000..79ff52e2
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,2004 @@
+@@ -0,0 +1,2019 @@
 +package cli
 +
 +import (
@@ -668,7 +668,9 @@ index 00000000..2be3e6f4
 +		run.ChangedFiles = files
 +		run.Diff, run.DiffTruncated = truncateReplayDiff(diff)
 +	}
-+	run.Metrics = replayMetrics(inspectionCtx, repoRoot, worktree, spec, run.ChangedFiles)
++	metrics, metricWarnings := replayMetricsWithWarnings(inspectionCtx, repoRoot, worktree, spec, run.ChangedFiles)
++	run.Metrics = metrics
++	run.Warnings = append(run.Warnings, metricWarnings...)
 +
 +	if opts.TestCommand != "" {
 +		if runnerErr == nil {
@@ -1153,6 +1155,11 @@ index 00000000..2be3e6f4
 +}
 +
 +func replayMetrics(ctx context.Context, repoRoot, worktree string, spec ReplaySpec, changedFiles []string) ReplayMetrics {
++	metrics, _ := replayMetricsWithWarnings(ctx, repoRoot, worktree, spec, changedFiles)
++	return metrics
++}
++
++func replayMetricsWithWarnings(ctx context.Context, repoRoot, worktree string, spec ReplaySpec, changedFiles []string) (ReplayMetrics, []string) {
 +	original := normalizeReplayPaths(spec.FilesTouched)
 +	produced := normalizeReplayPaths(changedFiles)
 +	overlap, missing, extra := replayFileSets(original, produced)
@@ -1169,39 +1176,47 @@ index 00000000..2be3e6f4
 +	if metrics.MissingTests {
 +		metrics.RiskScore++
 +	}
-+	if score, ok := replaySemanticSimilarity(ctx, repoRoot, worktree, spec); ok {
++	score, ok, warning := replaySemanticSimilarity(ctx, repoRoot, worktree, spec)
++	if ok {
 +		metrics.SemanticAvailable = true
 +		metrics.SemanticSimilarity = score
 +	}
-+	return metrics
++	var warnings []string
++	if warning != "" {
++		warnings = append(warnings, warning)
++	}
++	return metrics, warnings
 +}
 +
-+func replaySemanticSimilarity(ctx context.Context, repoRoot, worktree string, spec ReplaySpec) (int, bool) {
++func replaySemanticSimilarity(ctx context.Context, repoRoot, worktree string, spec ReplaySpec) (int, bool, string) {
 +	if _, err := exec.LookPath("entire-sem"); err != nil {
-+		return 0, false
++		return 0, false, ""
 +	}
 +	gold, err := replaySemanticKeys(ctx, repoRoot, spec.BaseCommit, spec.TargetCommit)
 +	if err != nil {
-+		return 0, false
++		return 0, false, fmt.Sprintf("semantic scoring unavailable: %v", err)
 +	}
 +	replayHead, cleanup, err := commitReplayResultForSemantic(ctx, worktree)
 +	if err != nil {
-+		return 0, false
++		return 0, false, fmt.Sprintf("semantic scoring unavailable: prepare replay result: %v", err)
 +	}
 +	replayed, err := replaySemanticKeys(ctx, worktree, spec.BaseCommit, replayHead)
 +	if err != nil {
-+		cleanupReplaySemanticCommit(cleanup)
-+		return 0, false
++		warning := fmt.Sprintf("semantic scoring unavailable: %v", err)
++		if cleanupErr := cleanupReplaySemanticCommit(cleanup); cleanupErr != nil {
++			warning += fmt.Sprintf("; cleanup failed: %v", cleanupErr)
++		}
++		return 0, false, warning
 +	}
 +	score := jaccardPercent(gold, replayed)
-+	if !cleanupReplaySemanticCommit(cleanup) {
-+		return 0, false
++	if err := cleanupReplaySemanticCommit(cleanup); err != nil {
++		return 0, false, fmt.Sprintf("semantic scoring unavailable: cleanup failed: %v", err)
 +	}
-+	return score, true
++	return score, true, ""
 +}
 +
-+func cleanupReplaySemanticCommit(cleanup func() error) bool {
-+	return cleanup() == nil
++func cleanupReplaySemanticCommit(cleanup func() error) error {
++	return cleanup()
 +}
 +
 +func commitReplayResultForSemantic(ctx context.Context, worktree string) (string, func() error, error) {
@@ -2043,10 +2058,10 @@ index 00000000..2be3e6f4
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..0794fecc
+index 00000000..47f46da8
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1531 @@
+@@ -0,0 +1,1574 @@
 +package cli
 +
 +import (
@@ -3221,6 +3236,49 @@ index 00000000..0794fecc
 +	}
 +	if !strings.Contains(run.Test.Output, "test-finished") {
 +		t.Fatalf("test output = %q, want test-finished", run.Test.Output)
++	}
++}
++
++func TestReplayCheckpointWarnsWhenInstalledSemanticScoringFails(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	binDir := t.TempDir()
++	semPath := filepath.Join(binDir, "entire-sem")
++	if err := os.WriteFile(semPath, []byte("#!/bin/sh\nprintf 'not-json'\n"), 0o755); err != nil {
++		t.Fatalf("write fake entire-sem: %v", err)
++	}
++	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
++
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "fake replay completed"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{Agent: fakeReplayAgent})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.Metrics.SemanticAvailable {
++		t.Fatalf("SemanticAvailable = true, want false after semantic scoring failure")
++	}
++	if !slices.ContainsFunc(run.Warnings, func(warning string) bool {
++		return strings.Contains(warning, "semantic scoring unavailable") &&
++			strings.Contains(warning, "parse entire-sem json")
++	}) {
++		t.Fatalf("Warnings = %v, want semantic scoring parse warning", run.Warnings)
++	}
++
++	loaded, err := readReplayRun(context.Background(), run.ID)
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if !slices.ContainsFunc(loaded.Warnings, func(warning string) bool {
++		return strings.Contains(warning, "semantic scoring unavailable") &&
++			strings.Contains(warning, "parse entire-sem json")
++	}) {
++		t.Fatalf("loaded Warnings = %v, want semantic scoring parse warning", loaded.Warnings)
 +	}
 +}
 +

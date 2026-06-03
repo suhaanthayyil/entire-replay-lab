@@ -26,6 +26,8 @@ work normally in an isolated worktree. It does not reveal the original diff.
 
 No. Without `entire-sem`, replay still reports file overlap, tests, risk,
 duration, and token usage when available. Semantic similarity is skipped.
+If `entire-sem` is installed but fails or returns invalid JSON, the replay still
+finishes and saves a warning in the report.
 
 ## Do I need Claude Code?
 
