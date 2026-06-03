@@ -58,6 +58,9 @@ To verify the built command surface:
 ./scripts/check-command-surface.sh
 ```
 
+This checks the replay/eval command tree plus the required public flags used by
+the README, demo, smoke, and release docs.
+
 After publishing a release, verify release docs, local tags, and GitHub releases:
 
 ```bash

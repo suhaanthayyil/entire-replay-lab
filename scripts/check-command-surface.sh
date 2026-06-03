@@ -14,6 +14,18 @@ check_help() {
   "$ENTIRE_BIN" "$@" --help >/dev/null
 }
 
+require_help_contains() {
+  local description="$1"
+  shift
+  local needle="$1"
+  shift
+
+  if ! "$ENTIRE_BIN" "$@" --help | grep -Fq -- "$needle"; then
+    echo "Missing $description in '$ENTIRE_BIN $* --help': $needle" >&2
+    exit 1
+  fi
+}
+
 check_help replay
 check_help replay checkpoint
 check_help replay report
@@ -21,9 +33,21 @@ check_help eval
 check_help eval run
 check_help eval report
 
-"$ENTIRE_BIN" replay --help | grep -Fq "checkpoint"
-"$ENTIRE_BIN" replay --help | grep -Fq "report"
-"$ENTIRE_BIN" eval --help | grep -Fq "run"
-"$ENTIRE_BIN" eval --help | grep -Fq "report"
+require_help_contains "replay checkpoint subcommand" "checkpoint" replay
+require_help_contains "replay report subcommand" "report" replay
+require_help_contains "eval run subcommand" "run" eval
+require_help_contains "eval report subcommand" "report" eval
+
+for flag in --agent --model --test-cmd --keep-worktree --json --timeout; do
+  require_help_contains "replay checkpoint flag" "$flag" replay checkpoint
+done
+
+require_help_contains "replay report json flag" "--json" replay report
+
+for flag in --checkpoint --from-checkpoints --limit --agent --model --test-cmd --keep-worktree --json --timeout; do
+  require_help_contains "eval run flag" "$flag" eval run
+done
+
+require_help_contains "eval report json flag" "--json" eval report
 
 echo "OK Replay/Eval command surface is available in $ENTIRE_BIN."

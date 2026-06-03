@@ -33,7 +33,7 @@ slice.
 ### `./scripts/check-command-surface.sh`
 
 Checks that the built Replay Lab binary exposes the expected `replay` and `eval`
-commands.
+commands, subcommands, and required user-facing flags.
 
 ```bash
 ./scripts/build-cli.sh

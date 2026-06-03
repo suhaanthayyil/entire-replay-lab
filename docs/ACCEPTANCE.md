@@ -56,6 +56,9 @@ Proves:
 - `entire replay` is registered
 - `entire eval` is registered
 - replay/eval subcommands expose help output
+- required replay/eval flags such as `--agent`, `--test-cmd`,
+  `--keep-worktree`, `--checkpoint`, `--from-checkpoints`, and `--json` are
+  present
 
 ## Local Machine Is Ready For A Live Replay
 
