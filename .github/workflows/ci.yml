@@ -39,6 +39,8 @@ jobs:
         run: bash -n scripts/*.sh
       - name: Build patched Entire CLI
         run: ./scripts/build-cli.sh
+      - name: Check build lock
+        run: ./scripts/check-build-lock.sh
       - name: Check Replay/Eval command surface
         run: ./scripts/check-command-surface.sh
       - name: Check Replay/Eval report fixtures

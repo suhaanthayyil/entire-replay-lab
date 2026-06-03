@@ -12,6 +12,10 @@ echo "== Replay Lab smoke: patched CLI build =="
 "$ROOT/scripts/build-cli.sh"
 
 echo
+echo "== Replay Lab smoke: build lock =="
+"$ROOT/scripts/check-build-lock.sh"
+
+echo
 echo "== Replay Lab smoke: command surface =="
 "$ROOT/scripts/check-command-surface.sh"
 

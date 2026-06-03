@@ -47,6 +47,10 @@ echo "== Release check: patched CLI build =="
 "$ROOT/scripts/build-cli.sh"
 
 echo
+echo "== Release check: build lock =="
+"$ROOT/scripts/check-build-lock.sh"
+
+echo
 echo "== Release check: command surface =="
 "$ROOT/scripts/check-command-surface.sh"
 

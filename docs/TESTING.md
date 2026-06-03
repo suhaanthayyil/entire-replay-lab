@@ -143,8 +143,9 @@ Run the main local proof path:
 ./scripts/smoke.sh /path/to/entire-enabled/repo
 ```
 
-This runs repo verification, patched CLI build, command-surface checks, doctor,
-and fresh-clone patch tests.
+This runs repo verification, patched CLI build, build-lock concurrency,
+command-surface checks, report fixtures, all-agent eval fixtures, doctor, and
+fresh-clone patch tests.
 
 ## Live Validation
 

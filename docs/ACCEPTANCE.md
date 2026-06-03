@@ -98,8 +98,10 @@ Proves the full local happy path:
 
 - repository verification
 - patched CLI build
+- build lock concurrency
 - command-surface checks
 - saved report fixture checks
+- all-agent eval fixture checks
 - local doctor checks
 - fresh-clone patch test
 

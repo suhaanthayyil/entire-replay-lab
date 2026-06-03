@@ -183,6 +183,7 @@ patches/
   entire-replay-lab.patch
 scripts/
   build-cli.sh         Build the Replay Lab CLI branch
+  check-build-lock.sh  Verify concurrent builds serialize safely
   check-all-agent-eval.sh Verify eval --agent all with a real checkpoint fixture
   check-command-surface.sh Verify replay/eval commands and required flags
   check-report-fixtures.sh Verify saved replay/eval report rendering

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.25 - 2026-06-03
+
+- Added `scripts/check-build-lock.sh` to prove concurrent `build-cli.sh`
+  invocations serialize through the repo-local lock.
+- Wired the build-lock fixture into CI, release checks, smoke checks, command
+  docs, acceptance docs, testing docs, and repo verification.
+- Verified the resulting binary still exposes Replay/Eval commands after
+  concurrent builds finish.
+
 ## v0.1.24 - 2026-06-03
 
 - Made `--agent all` derive from Entire's user-facing built-in coder registry

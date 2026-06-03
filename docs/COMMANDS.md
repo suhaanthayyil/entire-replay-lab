@@ -24,6 +24,15 @@ ENTIRE_BUILD_LOCK_TIMEOUT=60 ./scripts/build-cli.sh
 
 The default repo/ref/patch values live in `scripts/replay-lab-env.sh`.
 
+### `./scripts/check-build-lock.sh`
+
+Runs two `build-cli.sh` invocations concurrently and verifies the repo-local
+build lock serializes access to the shared patched checkout safely.
+
+```bash
+./scripts/check-build-lock.sh
+```
+
 ### `./scripts/verify-repo.sh`
 
 Runs the fast repository checks for docs, examples, schemas, metadata,
@@ -101,6 +110,7 @@ Runs the main proof path:
 
 - repo verification
 - patched CLI build
+- build lock concurrency
 - Replay/Eval command-surface checks
 - all-agent eval fixture
 - doctor checks
@@ -122,8 +132,8 @@ not run the replay itself.
 ### `./scripts/release-check.sh`
 
 Runs the release-ready proof path: repo validators, reproducibility checks,
-patched CLI build, command surface checks, report fixtures, the all-agent eval
-fixture, and patch tests.
+patched CLI build, build-lock concurrency, command surface checks, report
+fixtures, the all-agent eval fixture, and patch tests.
 
 ```bash
 ./scripts/release-check.sh
