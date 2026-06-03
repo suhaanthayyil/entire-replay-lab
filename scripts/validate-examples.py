@@ -1242,6 +1242,154 @@ def validate_rejects_missing_required_keys(
         raise ValidationError(f"{example_name}: schema accepted missing required key {case_path}")
 
 
+def expected_types(rule: dict[str, Any]) -> list[str]:
+    expected_type = rule.get("type")
+    if expected_type is None:
+        return []
+    if isinstance(expected_type, str):
+        return [expected_type]
+    if isinstance(expected_type, list) and all(isinstance(item, str) for item in expected_type):
+        return list(expected_type)
+    raise ValidationError("type must be a string or string array")
+
+
+def invalid_type_value(expected: list[str]) -> Any:
+    if "string" not in expected:
+        return "__invalid_replay_lab_type__"
+    if "integer" not in expected:
+        return 0
+    if "array" not in expected:
+        return []
+    if "object" not in expected:
+        return {}
+    if "boolean" not in expected:
+        return True
+    if "null" not in expected:
+        return None
+    return 1.5
+
+
+def collect_type_cases(
+    schema: dict[str, Any],
+    rule: dict[str, Any],
+    value: Any,
+    path: str,
+    segments: list[str | int],
+    schema_path: Path,
+    cache: dict[Path, dict[str, Any]],
+) -> list[tuple[str, list[str | int], Any]]:
+    if "$ref" in rule:
+        target_schema, target_rule, target_path = resolve_ref(
+            schema,
+            schema_path,
+            str(rule["$ref"]),
+            cache,
+        )
+        return collect_type_cases(
+            target_schema,
+            target_rule,
+            value,
+            path,
+            segments,
+            target_path,
+            cache,
+        )
+
+    cases: list[tuple[str, list[str | int], Any]] = []
+    expected = expected_types(rule)
+    if expected and type_name(value) in expected:
+        cases.append((path, list(segments), invalid_type_value(expected)))
+
+    if isinstance(value, dict):
+        properties = rule.get("properties", {})
+        if not isinstance(properties, dict):
+            raise ValidationError(f"{path}: properties must be an object")
+        for key, child in properties.items():
+            if key not in value:
+                continue
+            if not isinstance(child, dict):
+                raise ValidationError(f"{path}.{key}: property schema must be an object")
+            cases.extend(
+                collect_type_cases(
+                    schema,
+                    child,
+                    value[key],
+                    f"{path}.{key}",
+                    [*segments, key],
+                    schema_path,
+                    cache,
+                )
+            )
+
+    if isinstance(value, list) and "items" in rule:
+        item_rule = rule["items"]
+        if not isinstance(item_rule, dict):
+            raise ValidationError(f"{path}: items schema must be an object")
+        for index, item in enumerate(value):
+            cases.extend(
+                collect_type_cases(
+                    schema,
+                    item_rule,
+                    item,
+                    f"{path}[{index}]",
+                    [*segments, index],
+                    schema_path,
+                    cache,
+                )
+            )
+
+    return cases
+
+
+def validate_rejects_invalid_types(
+    example_path: Path,
+    schema_path: Path,
+) -> None:
+    schema_path = schema_path.resolve()
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    cache = {schema_path: schema}
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+
+    cases = collect_type_cases(
+        schema,
+        schema,
+        example,
+        example_name,
+        [],
+        schema_path,
+        cache,
+    )
+    for case_path, segments, invalid_value in cases:
+        mutated: Any = deepcopy(example)
+        if segments:
+            set_path_value(mutated, segments, invalid_value)
+        else:
+            mutated = invalid_value
+        try:
+            validate(
+                schema,
+                schema,
+                mutated,
+                f"{example_name}#invalid-type-{case_path}",
+                schema_path,
+                {schema_path: schema},
+            )
+        except ValidationError as exc:
+            if "expected type" not in str(exc):
+                raise ValidationError(
+                    f"{example_name}: type check for {case_path} failed "
+                    f"with unexpected error: {exc}"
+                ) from exc
+            continue
+        raise ValidationError(f"{example_name}: schema accepted invalid type {case_path}")
+
+
 def percent(numerator: int, denominator: int) -> int:
     if denominator == 0:
         return 100 if numerator == 0 else 0
@@ -1554,6 +1702,7 @@ def main() -> int:
             validate_rejects_invalid_numeric_bounds(example, schema)
             validate_rejects_invalid_literals(example, schema)
             validate_rejects_missing_required_keys(example, schema)
+            validate_rejects_invalid_types(example, schema)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
             validate_rejects_stale_eval_summary(example, schema)

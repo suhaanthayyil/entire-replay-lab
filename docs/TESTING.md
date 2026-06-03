@@ -13,6 +13,8 @@ Run this before committing docs, schemas, or scripts:
 It checks:
 
 - JSON examples parse successfully.
+- JSON value kinds reject wrong types at root and nested object levels through
+  local `type` schema checks.
 - JSON examples validate against the local schemas, including rejection of
   undocumented additional fields where root or nested schemas are closed.
 - Schema versions and replay/test statuses reject values outside their local

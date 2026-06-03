@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.62 - 2026-06-03
+
+- Added schema-driven negative checks for JSON Schema `type` constraints.
+- Covered root payloads, nested objects, arrays, strings, integers, booleans,
+  eval summaries, token usage, and embedded eval replay runs.
+- Made wrong-type regressions fail locally if type constraints are removed or
+  ignored.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.61 - 2026-06-03
 
 - Added schema-driven negative checks for JSON Schema `required` constraints.

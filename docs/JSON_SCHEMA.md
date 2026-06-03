@@ -16,13 +16,14 @@ python3 ./scripts/validate-examples.py
 ```
 
 The validator is intentionally dependency-free and supports the JSON Schema
-features used by this repo, including `additionalProperties: false` for checked
-root and nested objects, `const`/`enum` checks for schema versions and status
-literals, `required` checks for mandatory report fields, `minLength` for
-required identity strings, local cross-schema `$ref` links, `pattern` checks for
-non-blank identity strings, `uniqueItems` checks for set-like arrays, numeric
-`minimum`/`maximum` bounds, RFC3339 `date-time` checks for timestamps, and eval
-summary totals derived from embedded replay runs.
+features used by this repo, including `type` checks for JSON value kinds,
+`additionalProperties: false` for checked root and nested objects, `const` and
+`enum` checks for schema versions and status literals, `required` checks for
+mandatory report fields, `minLength` for required identity strings, local
+cross-schema `$ref` links, `pattern` checks for non-blank identity strings,
+`uniqueItems` checks for set-like arrays, numeric `minimum`/`maximum` bounds,
+RFC3339 `date-time` checks for timestamps, and eval summary totals derived from
+embedded replay runs.
 
 ## ReplayRun
 
@@ -122,6 +123,9 @@ contract exists.
 - New fields should be added to the schema, docs, and examples in the same
   change.
 - `schema_version` changes only for breaking JSON changes.
+- Typed report fields reject wrong JSON value kinds across root payloads,
+  nested objects, arrays, strings, integers, booleans, and embedded eval replay
+  runs.
 - Closed report objects reject undocumented fields at the replay/eval root and
   inside nested specs, tests, metrics, token usage, summaries, and embedded eval
   replay runs.

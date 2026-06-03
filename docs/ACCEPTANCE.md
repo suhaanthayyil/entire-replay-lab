@@ -19,6 +19,8 @@ Proves:
 
 - docs and examples exist
 - example JSON parses and validates against the local schemas
+- schema validation rejects wrong JSON value types in root and nested report
+  fields
 - schema validation rejects undocumented fields in closed root and nested
   report objects
 - schema validation rejects invalid schema versions and replay/test status

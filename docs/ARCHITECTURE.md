@@ -114,6 +114,8 @@ Replay Lab is intentionally diagnostic:
   the report filename
 - legacy eval reports with missing embedded replay run IDs recover stable IDs
   from the eval ID and original run position
+- typed replay/eval fields are schema-checked throughout the report tree, so
+  wrong JSON value kinds do not pass local validation as plausible report data
 - closed replay/eval objects are schema-checked against undocumented fields, so
   unexpected nested spec, test, metric, token, summary, or embedded-run keys do
   not pass local validation silently
