@@ -126,5 +126,7 @@ contract exists.
   warning is recorded.
 - Report readers normalize legacy null required arrays such as `files_touched`,
   `changed_files`, `agents`, `summaries`, and `runs` before JSON output.
+- Eval report summaries are recomputed from embedded replay runs before JSON
+  output, matching the summary consistency validator.
 - Missing optional integrations use explicit false/empty values instead of
   failing the whole run.

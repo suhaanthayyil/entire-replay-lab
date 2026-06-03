@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.44 - 2026-06-03
+
+- Recomputed eval report summaries from embedded replay runs during save, read,
+  and JSON output normalization, preventing stale summary totals from leaking
+  into `entire eval report --json`.
+- Derived missing or mismatched eval `agents` arrays from embedded replay runs
+  while preserving valid existing agent lists.
+- Added focused Go coverage for legacy eval reports with null summaries and
+  stale summary totals.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.43 - 2026-06-03
 
 - Normalized required replay/eval JSON arrays when saving, reading, or printing

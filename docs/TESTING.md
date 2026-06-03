@@ -219,6 +219,8 @@ Run a small eval:
   `changed_files` array.
 - Legacy reports with null required arrays are normalized to schema-valid empty
   arrays when read or printed as JSON.
+- Legacy eval reports with missing or stale summaries are repaired from embedded
+  replay runs before JSON output.
 - `--timeout` applies independently to the replay agent and optional test
   command rather than using one shared wall-clock budget.
 - `--keep-worktree` prints a path you can inspect without Replay Lab leaving

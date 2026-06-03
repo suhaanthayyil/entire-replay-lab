@@ -86,7 +86,8 @@ for needle in \
   "TestReplayCheckpointSavesReportWhenWorktreeSetupFails" \
   "TestReplayCheckpointKeepsStableChangedFilesWhenDiffInspectionFails" \
   "TestReadReplayRunNormalizesLegacyNullArrays" \
-  "TestReadReplayEvalNormalizesLegacyRequiredArrays"
+  "TestReadReplayEvalNormalizesLegacyRequiredArrays" \
+  "TestReadReplayEvalRecomputesStaleSummaries"
 do
   if ! grep -Fq "$needle" "$ENTIRE_REPLAY_PATCH"; then
     echo "Patch missing required text: $needle" >&2
