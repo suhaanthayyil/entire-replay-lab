@@ -69,7 +69,8 @@ To verify the built command surface:
 ```
 
 This checks the replay/eval command tree plus the required public flags used by
-the README, demo, smoke, and release docs.
+the README, demo, smoke, and release docs. It also verifies invalid replay
+agent selections fail with clear messages.
 
 To verify saved report rendering:
 
@@ -92,7 +93,8 @@ To verify `--agent all` at the command level without live model calls:
 
 This creates a temporary repo with a committed Entire checkpoint, runs
 `entire eval run --agent all --json`, validates the generated eval JSON, and
-confirms the rendered report lists every built-in Entire coder.
+confirms the rendered report lists every built-in Entire coder. It also checks
+that an explicit unknown eval agent renders as a schema-valid skipped run.
 
 After publishing a release, verify release docs, local tags, and GitHub releases:
 

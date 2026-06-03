@@ -186,4 +186,39 @@ for agent_name in claude-code codex copilot-cli cursor factoryai-droid gemini op
   fi
 done
 
+UNKNOWN_JSON="$WORKDIR/unknown-agent.json"
+(
+  cd "$REPO"
+  PATH="$SAFE_PATH" "$ENTIRE_BIN" eval run --checkpoint "$CHECKPOINT_ID" --agent unknown-agent --json >"$UNKNOWN_JSON"
+)
+
+python3 - "$UNKNOWN_JSON" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if data.get("agents") != ["unknown-agent"]:
+    raise SystemExit(f"unknown-agent eval agents mismatch: {data.get('agents')!r}")
+runs = data.get("runs", [])
+if len(runs) != 1:
+    raise SystemExit(f"unknown-agent eval run count = {len(runs)}, want 1")
+run = runs[0]
+if run.get("agent") != "unknown-agent":
+    raise SystemExit(f"unknown-agent eval run agent = {run.get('agent')!r}")
+if run.get("status") != "skipped":
+    raise SystemExit(f"unknown-agent eval status = {run.get('status')!r}, want skipped")
+if run.get("test", {}).get("status") != "skipped":
+    raise SystemExit(f"unknown-agent eval test status = {run.get('test', {}).get('status')!r}, want skipped")
+if "unknown replay agent" not in run.get("error", ""):
+    raise SystemExit(f"unknown-agent eval error mismatch: {run.get('error')!r}")
+if run.get("changed_files") != []:
+    raise SystemExit(f"unknown-agent changed_files = {run.get('changed_files')!r}, want []")
+
+print("OK unknown eval agent renders as a stable skipped run.")
+PY
+
+python3 "$ROOT/scripts/validate-examples.py" \
+  --check "$UNKNOWN_JSON" "$ROOT/schemas/eval-run.schema.json"
+
 echo "OK all-agent eval command fixture renders every built-in Entire coder."

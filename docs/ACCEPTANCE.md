@@ -61,6 +61,8 @@ Proves:
 - required replay/eval flags such as `--agent`, `--test-cmd`,
   `--keep-worktree`, `--checkpoint`, `--from-checkpoints`, and `--json` are
   present
+- invalid replay agent selections fail with clear user-facing errors before
+  any repo mutation
 - saved replay/eval reports can be rendered from result JSON in text and
   schema-valid JSON modes
 - eval report schemas validate embedded replay runs with the same ReplayRun
@@ -69,6 +71,8 @@ Proves:
 - `entire eval run --agent all --json` expands every built-in Entire coder in a
   real checkpoint fixture and emits schema-valid skipped runs without live model
   calls
+- explicit unknown eval agents emit schema-valid skipped runs with stable empty
+  arrays and useful errors
 
 ## Local Machine Is Ready For A Live Replay
 

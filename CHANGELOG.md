@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.29 - 2026-06-03
+
+- Hardened command-surface validation so `entire replay checkpoint --agent all`
+  and unknown replay agents must fail with clear user-facing errors.
+- Extended the all-agent eval fixture to prove an explicit unknown eval agent
+  becomes a schema-valid skipped JSON run with stable empty arrays.
+
 ## v0.1.28 - 2026-06-03
 
 - Fixed the `entire replay checkpoint` command docs so the `--agent` flag lists

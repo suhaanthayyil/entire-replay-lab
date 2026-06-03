@@ -28,6 +28,24 @@ require_help_contains() {
   fi
 }
 
+require_command_fails_contains() {
+  local description="$1"
+  shift
+  local needle="$1"
+  shift
+  local output
+
+  if output="$("$ENTIRE_BIN" "$@" 2>&1)"; then
+    echo "Expected '$ENTIRE_BIN $*' to fail for $description" >&2
+    exit 1
+  fi
+  if ! grep -Fq -- "$needle" <<<"$output"; then
+    echo "Missing $description in failing '$ENTIRE_BIN $*' output: $needle" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+}
+
 check_help replay
 check_help replay checkpoint
 check_help replay report
@@ -53,5 +71,12 @@ done
 require_help_contains "replay checkpoint launchable agents" "Agent to replay with: claude-code, codex, copilot-cli, cursor, factoryai-droid, gemini, opencode" replay checkpoint
 require_help_contains "eval run all-agent shortcut" "use all for every built-in Entire coder" eval run
 require_help_contains "eval report json flag" "--json" eval report
+
+require_command_fails_contains "replay checkpoint rejecting --agent all" \
+  "agent \"all\" is only supported for eval runs" \
+  replay checkpoint deadbeef --agent all
+require_command_fails_contains "replay checkpoint rejecting unknown agents" \
+  "unknown replay agent \"unknown-agent\"" \
+  replay checkpoint deadbeef --agent unknown-agent
 
 echo "OK Replay/Eval command surface is available in $ENTIRE_BIN."
