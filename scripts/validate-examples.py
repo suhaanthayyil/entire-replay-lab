@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -122,6 +123,13 @@ def validate(
         if actual not in expected:
             raise ValidationError(f"{path}: expected type {expected!r}, got {actual}")
 
+    if isinstance(value, str):
+        min_length = rule.get("minLength")
+        if min_length is not None and len(value) < min_length:
+            raise ValidationError(
+                f"{path}: expected string length >= {min_length}, got {len(value)}"
+            )
+
     if type_name(value) == "integer":
         minimum = rule.get("minimum")
         maximum = rule.get("maximum")
@@ -206,6 +214,75 @@ def validate_rejects_extra_field(example_path: Path, schema_path: Path) -> None:
             ) from exc
         return
     raise ValidationError(f"{example_name}: schema accepted an undocumented extra field")
+
+
+def validate_rejects_empty_required_strings(
+    example_path: Path,
+    schema_path: Path,
+    require_nested_examples: bool,
+) -> None:
+    schema_path = schema_path.resolve()
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+
+    cases: list[tuple[str, dict[str, Any]]] = []
+    mutated = dict(example)
+    mutated["id"] = ""
+    cases.append(("id", mutated))
+
+    if require_nested_examples and schema_path.name == "replay-run.schema.json":
+        spec = example.get("spec")
+        if not isinstance(spec, dict):
+            raise ValidationError(f"{example_name}.spec: expected object")
+        for key in ("checkpoint_id", "prompt", "target_commit", "base_commit"):
+            mutated = deepcopy(example)
+            mutated["spec"][key] = ""
+            cases.append((f"spec.{key}", mutated))
+        mutated = dict(example)
+        mutated["agent"] = ""
+        cases.append(("agent", mutated))
+
+    if require_nested_examples and schema_path.name == "eval-run.schema.json":
+        agents = example.get("agents")
+        summaries = example.get("summaries")
+        if not isinstance(agents, list) or not agents:
+            raise ValidationError(f"{example_name}.agents: expected non-empty array")
+        if not isinstance(summaries, list) or not summaries or not isinstance(summaries[0], dict):
+            raise ValidationError(f"{example_name}.summaries[0]: expected object")
+        mutated = deepcopy(example)
+        mutated["agents"][0] = ""
+        cases.append(("agents[0]", mutated))
+        mutated = deepcopy(example)
+        mutated["summaries"][0]["agent"] = ""
+        cases.append(("summaries[0].agent", mutated))
+
+    for case_path, mutated_case in cases:
+        cache = {schema_path: schema}
+        try:
+            validate(
+                schema,
+                schema,
+                mutated_case,
+                f"{example_name}#empty-{case_path}",
+                schema_path,
+                cache,
+            )
+        except ValidationError as exc:
+            if "expected string length >=" not in str(exc):
+                raise ValidationError(
+                    f"{example_name}: empty string check for {case_path} failed "
+                    f"with unexpected error: {exc}"
+                ) from exc
+            continue
+        raise ValidationError(
+            f"{example_name}: schema accepted empty required string {case_path}"
+        )
 
 
 def percent(numerator: int, denominator: int) -> int:
@@ -510,6 +587,7 @@ def main() -> int:
         for example, schema, require_nested_examples in checked_pairs(sys.argv[1:]):
             validate_path(example, schema)
             validate_rejects_extra_field(example, schema)
+            validate_rejects_empty_required_strings(example, schema, require_nested_examples)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
             validate_rejects_stale_eval_summary(example, schema)

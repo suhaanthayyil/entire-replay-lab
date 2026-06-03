@@ -17,8 +17,9 @@ python3 ./scripts/validate-examples.py
 
 The validator is intentionally dependency-free and supports the JSON Schema
 features used by this repo, including `additionalProperties: false` for the
-checked example payloads, local cross-schema `$ref` links, and eval summary
-totals derived from embedded replay runs.
+checked example payloads, `minLength` for required identity strings, local
+cross-schema `$ref` links, and eval summary totals derived from embedded
+replay runs.
 
 ## ReplayRun
 
@@ -118,6 +119,8 @@ contract exists.
 - New fields should be added to the schema, docs, and examples in the same
   change.
 - `schema_version` changes only for breaking JSON changes.
+- Required identity strings are non-empty, including replay/eval IDs, agent
+  names, checkpoint IDs, prompts, and commit anchors.
 - Large `diff` and `output` strings may be truncated.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.
 - Failed test commands may include `test.error` with the launch, cancellation,

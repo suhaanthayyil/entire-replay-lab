@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.52 - 2026-06-03
+
+- Added local JSON Schema `minLength` support to the dependency-free example
+  validator.
+- Required report identity strings now reject empty values, including replay
+  IDs, eval IDs, agents, checkpoint IDs, prompts, and commit anchors.
+- Added validator negative checks that mutate required identity strings to empty
+  values so schema regressions fail locally.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.51 - 2026-06-03
 
 - Recovered missing embedded replay run IDs inside eval reports from the eval

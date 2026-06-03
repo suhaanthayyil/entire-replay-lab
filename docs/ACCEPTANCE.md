@@ -19,6 +19,7 @@ Proves:
 
 - docs and examples exist
 - example JSON parses and validates against the local schemas
+- schema validation rejects empty required identity strings
 - schemas parse
 - patch file exists and includes Replay Lab implementation files
 - patch file only touches the expected upstream files
