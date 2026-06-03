@@ -62,7 +62,7 @@ commands, subcommands, and required user-facing flags.
 ### `./scripts/check-report-fixtures.sh`
 
 Seeds example replay/eval result JSON into a temporary git repo and verifies the
-built Replay Lab binary can render both text and `--json` reports.
+built Replay Lab binary can render both text and schema-valid `--json` reports.
 
 ```bash
 ./scripts/build-cli.sh
@@ -112,10 +112,12 @@ patched CLI build, command surface checks, report fixtures, and patch tests.
 
 ### `./scripts/validate-examples.py`
 
-Validates example JSON payloads against the local schema files.
+Validates example JSON payloads against the local schema files. It can also
+validate explicit JSON/schema pairs.
 
 ```bash
 python3 ./scripts/validate-examples.py
+python3 ./scripts/validate-examples.py --check /path/to/report.json schemas/replay-run.schema.json
 ```
 
 ### `./scripts/validate-project-metadata.py`

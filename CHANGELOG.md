@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.18 - 2026-06-03
+
+- Validated rendered Replay/Eval report JSON against local schemas.
+- Aligned `token_usage` schemas and examples with Entire agent token fields.
+
 ## v0.1.17 - 2026-06-03
 
 - Enforced closed JSON schema objects for checked Replay/Eval examples.

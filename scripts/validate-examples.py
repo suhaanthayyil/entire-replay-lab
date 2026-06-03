@@ -112,48 +112,73 @@ def validate(schema: dict[str, Any], rule: dict[str, Any], value: Any, path: str
             validate(schema, item_rule, item, f"{path}[{index}]")
 
 
+def display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def validate_path(example_path: Path, schema_path: Path) -> None:
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+    validate(schema, schema, example, example_name)
+    print(f"OK {example_name} matches {schema_name}")
+
+
 def validate_file(example_rel: str, schema_rel: str) -> None:
-    example_path = ROOT / example_rel
-    schema_path = ROOT / schema_rel
-    example = load_json(example_path)
-    schema = load_json(schema_path)
-    if not isinstance(schema, dict):
-        raise ValidationError(f"{schema_rel}: schema root must be an object")
-    validate(schema, schema, example, example_rel)
-    print(f"OK {example_rel} matches {schema_rel}")
+    validate_path(ROOT / example_rel, ROOT / schema_rel)
 
 
-def validate_rejects_extra_field(example_rel: str, schema_rel: str) -> None:
-    example_path = ROOT / example_rel
-    schema_path = ROOT / schema_rel
+def validate_rejects_extra_field(example_path: Path, schema_path: Path) -> None:
     example = load_json(example_path)
     schema = load_json(schema_path)
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
     if not isinstance(example, dict):
-        raise ValidationError(f"{example_rel}: example root must be an object")
+        raise ValidationError(f"{example_name}: example root must be an object")
     if not isinstance(schema, dict):
-        raise ValidationError(f"{schema_rel}: schema root must be an object")
+        raise ValidationError(f"{schema_name}: schema root must be an object")
     mutated = dict(example)
     mutated["__unexpected_replay_lab_field__"] = True
     try:
-        validate(schema, schema, mutated, f"{example_rel}#negative")
+        validate(schema, schema, mutated, f"{example_name}#negative")
     except ValidationError as exc:
         if "unexpected additional key" not in str(exc):
             raise ValidationError(
-                f"{example_rel}: negative additionalProperties check failed with "
+                f"{example_name}: negative additionalProperties check failed with "
                 f"unexpected error: {exc}"
             ) from exc
         return
-    raise ValidationError(f"{example_rel}: schema accepted an undocumented extra field")
+    raise ValidationError(f"{example_name}: schema accepted an undocumented extra field")
+
+
+def checked_pairs(args: list[str]) -> list[tuple[Path, Path]]:
+    if not args:
+        return [
+            (ROOT / "examples/replay-run.json", ROOT / "schemas/replay-run.schema.json"),
+            (ROOT / "examples/eval-run.json", ROOT / "schemas/eval-run.schema.json"),
+        ]
+    pairs: list[tuple[Path, Path]] = []
+    remaining = list(args)
+    while remaining:
+        if len(remaining) < 3 or remaining[0] != "--check":
+            raise ValidationError(
+                "usage: validate-examples.py [--check <json> <schema>]..."
+            )
+        pairs.append((Path(remaining[1]), Path(remaining[2])))
+        del remaining[:3]
+    return pairs
 
 
 def main() -> int:
-    pairs = [
-        ("examples/replay-run.json", "schemas/replay-run.schema.json"),
-        ("examples/eval-run.json", "schemas/eval-run.schema.json"),
-    ]
     try:
-        for example, schema in pairs:
-            validate_file(example, schema)
+        for example, schema in checked_pairs(sys.argv[1:]):
+            validate_path(example, schema)
             validate_rejects_extra_field(example, schema)
     except (OSError, json.JSONDecodeError, ValidationError) as exc:
         print(f"ERROR {exc}", file=sys.stderr)

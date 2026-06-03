@@ -77,6 +77,7 @@ To verify saved report rendering:
 
 This seeds the example result JSON into a temporary git repo and runs
 `entire replay report` plus `entire eval report` in text and `--json` modes.
+The generated `--json` output is validated against the local schemas.
 
 After publishing a release, verify release docs, local tags, and GitHub releases:
 

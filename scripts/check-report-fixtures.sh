@@ -69,4 +69,8 @@ if eval_run.get("result_path", "").endswith("evl_a12c0f44.json") is False:
     raise SystemExit("eval report JSON did not populate result_path")
 PY
 
-echo "OK Replay/Eval report fixture commands render text and JSON."
+python3 "$ROOT/scripts/validate-examples.py" \
+  --check "$REPLAY_JSON" "$ROOT/schemas/replay-run.schema.json" \
+  --check "$EVAL_JSON" "$ROOT/schemas/eval-run.schema.json"
+
+echo "OK Replay/Eval report fixture commands render text and schema-valid JSON."

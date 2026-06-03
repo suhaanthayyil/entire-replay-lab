@@ -60,8 +60,8 @@ Proves:
 - required replay/eval flags such as `--agent`, `--test-cmd`,
   `--keep-worktree`, `--checkpoint`, `--from-checkpoints`, and `--json` are
   present
-- saved replay/eval reports can be rendered from result JSON in text and JSON
-  modes
+- saved replay/eval reports can be rendered from result JSON in text and
+  schema-valid JSON modes
 
 ## Local Machine Is Ready For A Live Replay
 
