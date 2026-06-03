@@ -11,6 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = ROOT / "scripts"
 COMMANDS_DOC = ROOT / "docs" / "COMMANDS.md"
+LAUNCHABLE_AGENT_DOC_SNIPPET = (
+    "--agent claude-code|codex|copilot-cli|cursor|factoryai-droid|gemini|opencode"
+)
 
 
 def require(condition: bool, message: str, errors: list[str]) -> None:
@@ -69,6 +72,11 @@ def validate_commands_doc(script_names: list[str], errors: list[str]) -> None:
             f"docs/COMMANDS.md missing section for ./scripts/{script}",
             errors,
         )
+    require(
+        LAUNCHABLE_AGENT_DOC_SNIPPET in text,
+        "docs/COMMANDS.md must document the full launchable replay agent list",
+        errors,
+    )
 
 
 def main() -> int:

@@ -268,7 +268,7 @@ Replay one checkpoint with one launchable agent.
 
 Useful flags:
 
-- `--agent claude-code|codex|gemini`
+- `--agent claude-code|codex|copilot-cli|cursor|factoryai-droid|gemini|opencode`
 - `--model <model>`
 - `--test-cmd <command>`
 - `--keep-worktree`

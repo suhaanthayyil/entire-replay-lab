@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.28 - 2026-06-03
+
+- Fixed the `entire replay checkpoint` command docs so the `--agent` flag lists
+  the full launchable Replay Lab runner set.
+- Added a script-hygiene guard that fails if the command reference drifts back
+  to an incomplete launchable agent list.
+
 ## v0.1.27 - 2026-06-03
 
 - Added native replay runners for Copilot CLI, Cursor Agent CLI, Factory AI
