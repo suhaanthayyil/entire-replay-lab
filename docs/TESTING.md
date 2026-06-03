@@ -83,6 +83,8 @@ This seeds the example result JSON into a temporary git repo and runs
 `entire replay report` plus `entire eval report` in text and `--json` modes.
 The generated `--json` output is validated against the local schemas.
 The eval report fixture also proves embedded replay runs stay schema-valid.
+It also checks that missing replay/eval report IDs fail clearly in both normal
+and `--json` modes instead of rendering empty or misleading output.
 
 To verify `--agent all` at the command level without live model calls:
 

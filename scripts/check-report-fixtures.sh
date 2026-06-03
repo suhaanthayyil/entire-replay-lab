@@ -31,10 +31,52 @@ REPLAY_JSON="$WORKDIR/replay.json"
 EVAL_TEXT="$WORKDIR/eval.txt"
 EVAL_JSON="$WORKDIR/eval.json"
 
+require_repo_command_fails_contains() {
+  local description="$1"
+  shift
+  local primary_needle="$1"
+  shift
+  local secondary_needle="$1"
+  shift
+  local output
+
+  if output="$(cd "$REPO" && "$ENTIRE_BIN" "$@" 2>&1)"; then
+    echo "Expected '$ENTIRE_BIN $*' to fail for $description" >&2
+    exit 1
+  fi
+  if ! grep -Fq -- "$primary_needle" <<<"$output"; then
+    echo "Missing $description in failing '$ENTIRE_BIN $*' output: $primary_needle" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  if ! grep -Fq -- "$secondary_needle" <<<"$output"; then
+    echo "Missing $description in failing '$ENTIRE_BIN $*' output: $secondary_needle" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+}
+
 (cd "$REPO" && "$ENTIRE_BIN" replay report rpl_7a1d4c9e >"$REPLAY_TEXT")
 (cd "$REPO" && "$ENTIRE_BIN" replay report rpl_7a1d4c9e --json >"$REPLAY_JSON")
 (cd "$REPO" && "$ENTIRE_BIN" eval report evl_a12c0f44 >"$EVAL_TEXT")
 (cd "$REPO" && "$ENTIRE_BIN" eval report evl_a12c0f44 --json >"$EVAL_JSON")
+
+require_repo_command_fails_contains "missing replay report id" \
+  "read replay report:" \
+  ".git/entire-replay/runs/missing-id.json" \
+  replay report missing-id
+require_repo_command_fails_contains "missing replay report id JSON" \
+  "read replay report:" \
+  ".git/entire-replay/runs/missing-id.json" \
+  replay report missing-id --json
+require_repo_command_fails_contains "missing eval report id" \
+  "read eval report:" \
+  ".git/entire-replay/evals/missing-id.json" \
+  eval report missing-id
+require_repo_command_fails_contains "missing eval report id JSON" \
+  "read eval report:" \
+  ".git/entire-replay/evals/missing-id.json" \
+  eval report missing-id --json
 
 grep -Fq "Replay" "$REPLAY_TEXT"
 grep -Fq "rpl_7a1d4c9e" "$REPLAY_TEXT"

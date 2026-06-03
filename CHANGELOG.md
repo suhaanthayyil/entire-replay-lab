@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.30 - 2026-06-03
+
+- Hardened the saved-report fixture so missing replay and eval report IDs must
+  fail clearly in both text and `--json` modes.
+- Documented the missing-report negative-path guarantee in acceptance, testing,
+  and command-reference docs.
+
 ## v0.1.29 - 2026-06-03
 
 - Hardened command-surface validation so `entire replay checkpoint --agent all`

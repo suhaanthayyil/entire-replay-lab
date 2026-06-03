@@ -76,6 +76,8 @@ commands, subcommands, and required user-facing flags.
 
 Seeds example replay/eval result JSON into a temporary git repo and verifies the
 built Replay Lab binary can render both text and schema-valid `--json` reports.
+It also verifies missing replay/eval report IDs fail clearly in both normal and
+`--json` modes.
 
 ```bash
 ./scripts/build-cli.sh

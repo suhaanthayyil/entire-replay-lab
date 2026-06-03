@@ -65,6 +65,8 @@ Proves:
   any repo mutation
 - saved replay/eval reports can be rendered from result JSON in text and
   schema-valid JSON modes
+- missing replay/eval report IDs fail with clear `read ... report` errors in
+  text and `--json` modes
 - eval report schemas validate embedded replay runs with the same ReplayRun
   contract used for standalone replay reports
 - eval summary totals match the embedded replay runs that the report carries
