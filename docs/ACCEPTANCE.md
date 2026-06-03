@@ -98,6 +98,8 @@ Proves:
 - eval summary totals match the embedded replay runs that the report carries
 - eval report readers repair stale or missing summaries from embedded replay
   runs before rendering JSON
+- eval report readers preserve selected agents when a sparse legacy eval has no
+  embedded runs yet
 - `entire eval run --agent all --json` expands every built-in Entire coder in a
   real checkpoint fixture and emits schema-valid skipped runs without live model
   calls

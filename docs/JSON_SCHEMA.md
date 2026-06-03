@@ -128,5 +128,7 @@ contract exists.
   `changed_files`, `agents`, `summaries`, and `runs` before JSON output.
 - Eval report summaries are recomputed from embedded replay runs before JSON
   output, matching the summary consistency validator.
+- Empty eval reports may still carry selected `agents`; normalization preserves
+  that metadata while keeping `summaries` and `runs` as arrays.
 - Missing optional integrations use explicit false/empty values instead of
   failing the whole run.

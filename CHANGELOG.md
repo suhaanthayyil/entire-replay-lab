@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.45 - 2026-06-03
+
+- Preserved selected eval `agents` when normalizing reports with empty `runs`
+  arrays, so sparse legacy eval reports do not lose selection metadata.
+- Kept deduplication and stable empty `summaries`/`runs` arrays for those empty
+  eval reports.
+- Added focused Go coverage for legacy empty-run eval reports with selected
+  agents.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.44 - 2026-06-03
 
 - Recomputed eval report summaries from embedded replay runs during save, read,

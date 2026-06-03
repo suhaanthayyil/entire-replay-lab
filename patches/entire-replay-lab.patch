@@ -33,7 +33,7 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..4d1f8561
+index 00000000..252aa94d
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
 @@ -0,0 +1,2108 @@
@@ -1413,7 +1413,7 @@ index 00000000..4d1f8561
 +	for i := range run.Runs {
 +		normalizeReplayRunForJSON(&run.Runs[i])
 +	}
-+	if !replayEvalAgentsMatchRuns(run.Agents, run.Runs) {
++	if len(run.Runs) > 0 && !replayEvalAgentsMatchRuns(run.Agents, run.Runs) {
 +		run.Agents = replayEvalAgentsFromRuns(run.Runs)
 +	}
 +	run.Summaries = summarizeReplayEvalAgents(run.Runs)
@@ -2147,10 +2147,10 @@ index 00000000..4d1f8561
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..eb0f9504
+index 00000000..55f1723a
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1969 @@
+@@ -0,0 +1,2013 @@
 +package cli
 +
 +import (
@@ -3057,6 +3057,50 @@ index 00000000..eb0f9504
 +	}
 +	if strings.Contains(out.String(), `"runs": 99`) || strings.Contains(out.String(), `"passed": 99`) {
 +		t.Fatalf("legacy eval report JSON retained stale summary:\n%s", out.String())
++	}
++}
++
++func TestReadReplayEvalPreservesAgentsWhenRunsAreEmpty(t *testing.T) {
++	_, _, _, _ = newReplayRepo(t)
++	dir, err := replayEvalsDir(context.Background())
++	if err != nil {
++		t.Fatalf("replayEvalsDir() error = %v", err)
++	}
++	if err := os.MkdirAll(dir, 0o750); err != nil {
++		t.Fatalf("mkdir replay evals dir: %v", err)
++	}
++	reportPath := filepath.Join(dir, "legacy-empty-runs-with-agents.json")
++	if err := os.WriteFile(reportPath, []byte(`{
++  "schema_version": 1,
++  "id": "legacy-empty-runs-with-agents",
++  "agents": ["codex", "claude-code", "codex"],
++  "summaries": null,
++  "runs": []
++}`), 0o600); err != nil {
++		t.Fatalf("write legacy empty eval report: %v", err)
++	}
++
++	loaded, err := readReplayEval(context.Background(), "legacy-empty-runs-with-agents")
++	if err != nil {
++		t.Fatalf("readReplayEval() error = %v", err)
++	}
++	if !slices.Equal(loaded.Agents, []string{string(agentpkg.AgentNameCodex), string(agentpkg.AgentNameClaudeCode)}) {
++		t.Fatalf("Agents = %v, want preserved deduplicated selection", loaded.Agents)
++	}
++	if loaded.Runs == nil || len(loaded.Runs) != 0 {
++		t.Fatalf("Runs = %+v, want stable empty array", loaded.Runs)
++	}
++	if loaded.Summaries == nil || len(loaded.Summaries) != 0 {
++		t.Fatalf("Summaries = %+v, want stable empty array", loaded.Summaries)
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, loaded); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	for _, want := range []string{`"agents": [`, `"codex"`, `"claude-code"`, `"summaries": []`, `"runs": []`} {
++		if !strings.Contains(out.String(), want) {
++			t.Fatalf("legacy empty eval report JSON missing %s:\n%s", want, out.String())
++		}
 +	}
 +}
 +

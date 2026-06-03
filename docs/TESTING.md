@@ -221,6 +221,8 @@ Run a small eval:
   arrays when read or printed as JSON.
 - Legacy eval reports with missing or stale summaries are repaired from embedded
   replay runs before JSON output.
+- Sparse legacy eval reports with selected agents and empty runs preserve the
+  selected agent list.
 - `--timeout` applies independently to the replay agent and optional test
   command rather than using one shared wall-clock budget.
 - `--keep-worktree` prints a path you can inspect without Replay Lab leaving
