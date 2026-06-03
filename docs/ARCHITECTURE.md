@@ -114,7 +114,7 @@ Replay Lab is intentionally diagnostic:
   the report filename
 - legacy eval reports with missing embedded replay run IDs recover stable IDs
   from the eval ID and original run position
-- required replay/eval identity strings are schema-checked as non-empty, so
+- required replay/eval identity strings are schema-checked as non-blank, so
   blank IDs, agents, checkpoint IDs, prompts, or commit anchors fail local
   validation instead of passing as present-but-useless strings
 - setup, agent, and test-command steps receive independent timeout contexts

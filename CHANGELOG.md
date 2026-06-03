@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.53 - 2026-06-03
+
+- Added local JSON Schema `pattern` support to the dependency-free example
+  validator.
+- Required report identity strings now reject whitespace-only values as well as
+  empty values.
+- Added validator negative checks that mutate required identity strings to
+  blank whitespace values so schema regressions fail locally.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.52 - 2026-06-03
 
 - Added local JSON Schema `minLength` support to the dependency-free example

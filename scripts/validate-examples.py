@@ -8,6 +8,7 @@ Schema features used by this repo's schemas, not the full JSON Schema spec.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from copy import deepcopy
 from pathlib import Path
@@ -129,6 +130,16 @@ def validate(
             raise ValidationError(
                 f"{path}: expected string length >= {min_length}, got {len(value)}"
             )
+        pattern = rule.get("pattern")
+        if pattern is not None:
+            try:
+                matches_pattern = re.search(str(pattern), value) is not None
+            except re.error as exc:
+                raise ValidationError(
+                    f"{path}: invalid string pattern {pattern!r}: {exc}"
+                ) from exc
+            if not matches_pattern:
+                raise ValidationError(f"{path}: expected string matching pattern {pattern!r}")
 
     if type_name(value) == "integer":
         minimum = rule.get("minimum")
@@ -216,7 +227,7 @@ def validate_rejects_extra_field(example_path: Path, schema_path: Path) -> None:
     raise ValidationError(f"{example_name}: schema accepted an undocumented extra field")
 
 
-def validate_rejects_empty_required_strings(
+def validate_rejects_invalid_required_strings(
     example_path: Path,
     schema_path: Path,
     require_nested_examples: bool,
@@ -231,10 +242,17 @@ def validate_rejects_empty_required_strings(
     if not isinstance(schema, dict):
         raise ValidationError(f"{schema_name}: schema root must be an object")
 
-    cases: list[tuple[str, dict[str, Any]]] = []
+    cases: list[tuple[str, dict[str, Any], str]] = []
+
+    def add_case(case_path: str, mutated_case: dict[str, Any], expected: str) -> None:
+        cases.append((case_path, mutated_case, expected))
+
     mutated = dict(example)
     mutated["id"] = ""
-    cases.append(("id", mutated))
+    add_case("id", mutated, "expected string length >=")
+    mutated = dict(example)
+    mutated["id"] = "   "
+    add_case("id.blank", mutated, "expected string matching pattern")
 
     if require_nested_examples and schema_path.name == "replay-run.schema.json":
         spec = example.get("spec")
@@ -243,10 +261,16 @@ def validate_rejects_empty_required_strings(
         for key in ("checkpoint_id", "prompt", "target_commit", "base_commit"):
             mutated = deepcopy(example)
             mutated["spec"][key] = ""
-            cases.append((f"spec.{key}", mutated))
+            add_case(f"spec.{key}", mutated, "expected string length >=")
+            mutated = deepcopy(example)
+            mutated["spec"][key] = "   "
+            add_case(f"spec.{key}.blank", mutated, "expected string matching pattern")
         mutated = dict(example)
         mutated["agent"] = ""
-        cases.append(("agent", mutated))
+        add_case("agent", mutated, "expected string length >=")
+        mutated = dict(example)
+        mutated["agent"] = "   "
+        add_case("agent.blank", mutated, "expected string matching pattern")
 
     if require_nested_examples and schema_path.name == "eval-run.schema.json":
         agents = example.get("agents")
@@ -257,12 +281,18 @@ def validate_rejects_empty_required_strings(
             raise ValidationError(f"{example_name}.summaries[0]: expected object")
         mutated = deepcopy(example)
         mutated["agents"][0] = ""
-        cases.append(("agents[0]", mutated))
+        add_case("agents[0]", mutated, "expected string length >=")
+        mutated = deepcopy(example)
+        mutated["agents"][0] = "   "
+        add_case("agents[0].blank", mutated, "expected string matching pattern")
         mutated = deepcopy(example)
         mutated["summaries"][0]["agent"] = ""
-        cases.append(("summaries[0].agent", mutated))
+        add_case("summaries[0].agent", mutated, "expected string length >=")
+        mutated = deepcopy(example)
+        mutated["summaries"][0]["agent"] = "   "
+        add_case("summaries[0].agent.blank", mutated, "expected string matching pattern")
 
-    for case_path, mutated_case in cases:
+    for case_path, mutated_case, expected in cases:
         cache = {schema_path: schema}
         try:
             validate(
@@ -274,14 +304,14 @@ def validate_rejects_empty_required_strings(
                 cache,
             )
         except ValidationError as exc:
-            if "expected string length >=" not in str(exc):
+            if expected not in str(exc):
                 raise ValidationError(
-                    f"{example_name}: empty string check for {case_path} failed "
+                    f"{example_name}: invalid string check for {case_path} failed "
                     f"with unexpected error: {exc}"
                 ) from exc
             continue
         raise ValidationError(
-            f"{example_name}: schema accepted empty required string {case_path}"
+            f"{example_name}: schema accepted invalid required string {case_path}"
         )
 
 
@@ -587,7 +617,7 @@ def main() -> int:
         for example, schema, require_nested_examples in checked_pairs(sys.argv[1:]):
             validate_path(example, schema)
             validate_rejects_extra_field(example, schema)
-            validate_rejects_empty_required_strings(example, schema, require_nested_examples)
+            validate_rejects_invalid_required_strings(example, schema, require_nested_examples)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
             validate_rejects_stale_eval_summary(example, schema)

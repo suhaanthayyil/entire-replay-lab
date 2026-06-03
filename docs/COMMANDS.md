@@ -158,7 +158,7 @@ surface checks, report fixtures, the all-agent eval fixture, and patch tests.
 ### `./scripts/validate-examples.py`
 
 Validates example JSON payloads against the local schema files, including local
-cross-schema references, non-empty required identity strings, and eval summary
+cross-schema references, non-blank required identity strings, and eval summary
 consistency. It can also validate explicit JSON/schema pairs.
 
 ```bash

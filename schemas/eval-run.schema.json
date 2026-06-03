@@ -17,7 +17,8 @@
     },
     "id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "started_at": {
       "type": "string"
@@ -29,7 +30,8 @@
       "type": "array",
       "items": {
         "type": "string",
-        "minLength": 1
+        "minLength": 1,
+        "pattern": "\\S"
       }
     },
     "summaries": {
@@ -67,7 +69,8 @@
       "properties": {
         "agent": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "runs": {
           "type": "integer",

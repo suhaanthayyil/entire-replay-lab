@@ -20,14 +20,16 @@
     },
     "id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "spec": {
       "$ref": "#/$defs/replay_spec"
     },
     "agent": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "model": {
       "type": "string"
@@ -107,22 +109,26 @@
       "properties": {
         "checkpoint_id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "session_id": {
           "type": "string"
         },
         "prompt": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "target_commit": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "base_commit": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "files_touched": {
           "type": "array",
