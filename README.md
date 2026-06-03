@@ -194,6 +194,7 @@ scripts/
   validate-doc-links.py Validate local Markdown links and anchors
   validate-examples.py Validate example JSON against local schemas
   validate-release-docs.py Validate changelog and release-note consistency
+  verify-patch-manifest.sh Check the patch touches only expected upstream files
   verify-release-state.sh Check docs, tags, and GitHub releases after publishing
   verify-reproducibility.sh Check pinned build inputs stay in sync
   verify-repo.sh       Validate docs and JSON examples

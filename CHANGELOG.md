@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.5 - 2026-06-02
+
+- Added patch manifest validation to catch accidental broad upstream patch changes.
+
 ## v0.1.4 - 2026-06-02
 
 - Added post-release verification for release notes, local tags, and GitHub releases.

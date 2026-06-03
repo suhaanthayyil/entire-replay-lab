@@ -23,6 +23,10 @@ echo "== Release check: reproducibility metadata =="
 "$ROOT/scripts/verify-reproducibility.sh"
 
 echo
+echo "== Release check: patch manifest =="
+"$ROOT/scripts/verify-patch-manifest.sh"
+
+echo
 echo "== Release check: patched CLI build =="
 "$ROOT/scripts/build-cli.sh"
 

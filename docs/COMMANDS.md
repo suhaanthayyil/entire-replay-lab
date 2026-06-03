@@ -78,6 +78,15 @@ the build scripts, and documented consistently.
 ./scripts/verify-reproducibility.sh
 ```
 
+### `./scripts/verify-patch-manifest.sh`
+
+Checks that the Replay Lab patch only touches the expected upstream files and
+includes the replay command/test anchors.
+
+```bash
+./scripts/verify-patch-manifest.sh
+```
+
 ### `./scripts/verify-release-state.sh`
 
 After publishing a release, checks that `docs/releases/v*.md`, local git tags,

@@ -12,6 +12,7 @@ Evidence:
 ./scripts/verify-repo.sh
 python3 ./scripts/validate-examples.py
 ./scripts/verify-reproducibility.sh
+./scripts/verify-patch-manifest.sh
 ```
 
 Proves:
@@ -20,6 +21,7 @@ Proves:
 - example JSON parses and validates against the local schemas
 - schemas parse
 - patch file exists and includes Replay Lab implementation files
+- patch file only touches the expected upstream files
 - pinned upstream base and patch metadata stay in sync
 - scripts pass shell syntax checks
 

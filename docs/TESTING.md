@@ -19,6 +19,7 @@ It checks:
 - Local Markdown links and anchors resolve.
 - Changelog and release-note files stay in sync.
 - Reproducibility metadata is in sync.
+- The Replay Lab patch touches only the expected upstream files.
 - Shell scripts pass `bash -n`.
 
 ## Build Validation
@@ -42,6 +43,12 @@ To verify those pinned inputs:
 
 ```bash
 ./scripts/verify-reproducibility.sh
+```
+
+To verify the patch file surface:
+
+```bash
+./scripts/verify-patch-manifest.sh
 ```
 
 After publishing a release, verify release docs, local tags, and GitHub releases:
