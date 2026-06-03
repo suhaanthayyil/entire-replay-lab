@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.55 - 2026-06-03
+
+- Required replay file-list entries now reject empty or whitespace-only values
+  in the schema contract.
+- Applied non-blank string checks to `changed_files`, `files_touched`, and
+  metric file buckets.
+- Added validator negative checks that mutate file-list arrays to blank values
+  so schema regressions fail locally.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.54 - 2026-06-03
 
 - Added local JSON Schema `uniqueItems` support to the dependency-free example

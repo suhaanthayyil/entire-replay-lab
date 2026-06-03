@@ -124,6 +124,7 @@ contract exists.
   names, checkpoint IDs, prompts, and commit anchors.
 - Set-like arrays reject duplicates, including eval `agents`, replay
   `changed_files`, replay spec `files_touched`, and metric file buckets.
+- File-list entries are non-blank wherever those arrays appear.
 - Large `diff` and `output` strings may be truncated.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.
 - Failed test commands may include `test.error` with the launch, cancellation,

@@ -335,6 +335,105 @@ def duplicate_first_string(values: Any) -> list[str] | None:
     return [first, first, *values[1:]]
 
 
+def validate_rejects_invalid_file_array_items(
+    example_path: Path,
+    schema_path: Path,
+    require_nested_examples: bool,
+) -> None:
+    schema_path = schema_path.resolve()
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+
+    cases: list[tuple[str, dict[str, Any], str]] = []
+
+    def add_cases(case_path: str, mutator: Any) -> None:
+        mutated = deepcopy(example)
+        mutator(mutated, "")
+        cases.append((case_path, mutated, "expected string length >="))
+        mutated = deepcopy(example)
+        mutator(mutated, "   ")
+        cases.append((f"{case_path}.blank", mutated, "expected string matching pattern"))
+
+    def set_top_array(key: str) -> Any:
+        return lambda mutated, value: mutated.__setitem__(key, [value])
+
+    def set_spec_array(key: str) -> Any:
+        return lambda mutated, value: mutated["spec"].__setitem__(key, [value])
+
+    def set_metric_array(key: str) -> Any:
+        return lambda mutated, value: mutated["metrics"].__setitem__(key, [value])
+
+    def set_run_array(index: int, key: str) -> Any:
+        return lambda mutated, value: mutated["runs"][index].__setitem__(key, [value])
+
+    def set_run_spec_array(index: int, key: str) -> Any:
+        return lambda mutated, value: mutated["runs"][index]["spec"].__setitem__(key, [value])
+
+    def set_run_metric_array(index: int, key: str) -> Any:
+        return lambda mutated, value: mutated["runs"][index]["metrics"].__setitem__(key, [value])
+
+    if schema_path.name == "replay-run.schema.json":
+        add_cases("changed_files[0]", set_top_array("changed_files"))
+        spec = example.get("spec")
+        if require_nested_examples and not isinstance(spec, dict):
+            raise ValidationError(f"{example_name}.spec: expected object")
+        if isinstance(spec, dict):
+            add_cases("spec.files_touched[0]", set_spec_array("files_touched"))
+        metrics = example.get("metrics")
+        if isinstance(metrics, dict):
+            for key in ("missing_files", "extra_files", "risky_files"):
+                add_cases(f"metrics.{key}[0]", set_metric_array(key))
+
+    if require_nested_examples and schema_path.name == "eval-run.schema.json":
+        runs = example.get("runs")
+        if not isinstance(runs, list) or not runs:
+            raise ValidationError(f"{example_name}.runs: expected non-empty array")
+        for index, run in enumerate(runs):
+            if not isinstance(run, dict):
+                continue
+            add_cases(f"runs[{index}].changed_files[0]", set_run_array(index, "changed_files"))
+            if isinstance(run.get("spec"), dict):
+                add_cases(
+                    f"runs[{index}].spec.files_touched[0]",
+                    set_run_spec_array(index, "files_touched"),
+                )
+            if isinstance(run.get("metrics"), dict):
+                for key in ("missing_files", "extra_files", "risky_files"):
+                    add_cases(
+                        f"runs[{index}].metrics.{key}[0]",
+                        set_run_metric_array(index, key),
+                    )
+            break
+
+    for case_path, mutated_case, expected in cases:
+        cache = {schema_path: schema}
+        try:
+            validate(
+                schema,
+                schema,
+                mutated_case,
+                f"{example_name}#invalid-file-{case_path}",
+                schema_path,
+                cache,
+            )
+        except ValidationError as exc:
+            if expected not in str(exc):
+                raise ValidationError(
+                    f"{example_name}: invalid file-array check for {case_path} "
+                    f"failed with unexpected error: {exc}"
+                ) from exc
+            continue
+        raise ValidationError(
+            f"{example_name}: schema accepted invalid file-array item in {case_path}"
+        )
+
+
 def validate_rejects_duplicate_unique_arrays(
     example_path: Path,
     schema_path: Path,
@@ -745,6 +844,7 @@ def main() -> int:
             validate_path(example, schema)
             validate_rejects_extra_field(example, schema)
             validate_rejects_invalid_required_strings(example, schema, require_nested_examples)
+            validate_rejects_invalid_file_array_items(example, schema, require_nested_examples)
             validate_rejects_duplicate_unique_arrays(example, schema, require_nested_examples)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
