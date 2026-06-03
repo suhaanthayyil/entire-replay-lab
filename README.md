@@ -199,6 +199,7 @@ scripts/
   validate-portability.py Validate reusable docs/scripts avoid local machine paths
   validate-project-metadata.py Validate MIT license and repo identity text
   validate-release-docs.py Validate changelog and release-note consistency
+  validate-script-hygiene.py Validate script permissions and command docs
   verify-patch-manifest.sh Check the patch touches only expected upstream files
   verify-release-state.sh Check docs, tags, and GitHub releases after publishing
   verify-reproducibility.sh Check pinned build inputs stay in sync

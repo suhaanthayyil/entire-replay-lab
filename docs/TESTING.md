@@ -21,6 +21,8 @@ It checks:
 - Markdown code fences are closed, use expected languages, and JSON snippets
   parse.
 - Reusable docs and scripts avoid machine-specific local paths.
+- Helper scripts keep expected shebangs, executable bits, shell safety flags,
+  Python entrypoints, and command-reference sections.
 - Changelog and release-note files stay in sync.
 - Reproducibility metadata is in sync.
 - The Replay Lab patch touches only the expected upstream files.

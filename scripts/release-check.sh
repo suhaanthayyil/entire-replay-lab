@@ -27,6 +27,10 @@ echo "== Release check: portability validation =="
 python3 "$ROOT/scripts/validate-portability.py"
 
 echo
+echo "== Release check: script hygiene validation =="
+python3 "$ROOT/scripts/validate-script-hygiene.py"
+
+echo
 echo "== Release check: release docs validation =="
 python3 "$ROOT/scripts/validate-release-docs.py"
 

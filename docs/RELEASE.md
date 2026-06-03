@@ -12,9 +12,10 @@ Run the release check before tagging any prototype release:
 
 It verifies the repository package, project metadata, MIT license hygiene,
 example schemas, Markdown links/fences, portability of reusable docs/scripts,
-patched CLI build, Replay/Eval command surface, saved report fixtures,
-release-note consistency, pinned reproducibility metadata, patch manifest, and
-fresh-clone patch tests without launching a live coding agent.
+helper script hygiene, patched CLI build, Replay/Eval command surface, saved
+report fixtures, release-note consistency, pinned reproducibility metadata,
+patch manifest, and fresh-clone patch tests without launching a live coding
+agent.
 
 ## Before Tagging
 

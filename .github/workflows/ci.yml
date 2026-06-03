@@ -27,6 +27,8 @@ jobs:
         run: python3 ./scripts/validate-markdown-fences.py
       - name: Validate portability
         run: python3 ./scripts/validate-portability.py
+      - name: Validate script hygiene
+        run: python3 ./scripts/validate-script-hygiene.py
       - name: Validate release docs
         run: python3 ./scripts/validate-release-docs.py
       - name: Verify reproducibility metadata

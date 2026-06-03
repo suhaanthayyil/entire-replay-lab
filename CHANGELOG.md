@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.16 - 2026-06-03
+
+- Added helper script hygiene and command-reference coverage validation.
+
 ## v0.1.15 - 2026-06-03
 
 - Added portability validation for reusable docs and scripts.

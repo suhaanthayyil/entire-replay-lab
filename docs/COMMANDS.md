@@ -21,6 +21,25 @@ ENTIRE_CLI_REPO=https://github.com/<user>/cli.git ENTIRE_CLI_REF=<ref> ./scripts
 
 The default repo/ref/patch values live in `scripts/replay-lab-env.sh`.
 
+### `./scripts/verify-repo.sh`
+
+Runs the fast repository checks for docs, examples, schemas, metadata,
+portability, release-note consistency, reproducibility metadata, and patch
+manifest sanity.
+
+```bash
+./scripts/verify-repo.sh
+```
+
+### `./scripts/replay-lab-env.sh`
+
+Sourceable helper that stores the pinned upstream Entire CLI repo, ref, patch
+path, and expected patch SHA-256 used by build and verification scripts.
+
+```bash
+./scripts/replay-lab-env.sh
+```
+
 ### `./scripts/check-patch.sh`
 
 Applies the patch to a fresh temporary CLI clone and runs the Replay Lab test
@@ -73,6 +92,24 @@ Runs the main proof path:
 ./scripts/smoke.sh /path/to/entire-enabled/repo
 ```
 
+### `./scripts/demo-commands.sh [repo]`
+
+Prints a copy/paste demo sequence for a repo with Entire checkpoints. It does
+not run the replay itself.
+
+```bash
+./scripts/demo-commands.sh /path/to/entire-enabled/repo
+```
+
+### `./scripts/release-check.sh`
+
+Runs the release-ready proof path: repo validators, reproducibility checks,
+patched CLI build, command surface checks, report fixtures, and patch tests.
+
+```bash
+./scripts/release-check.sh
+```
+
 ### `./scripts/validate-examples.py`
 
 Validates example JSON payloads against the local schema files.
@@ -90,12 +127,12 @@ license hygiene so the repo stays easy for Entire to inspect and reuse.
 python3 ./scripts/validate-project-metadata.py
 ```
 
-### `./scripts/validate-release-docs.py`
+### `./scripts/validate-doc-links.py`
 
-Validates that `CHANGELOG.md` and `docs/releases/v*.md` stay in sync.
+Validates local Markdown links and heading anchors across README and docs.
 
 ```bash
-python3 ./scripts/validate-release-docs.py
+python3 ./scripts/validate-doc-links.py
 ```
 
 ### `./scripts/validate-markdown-fences.py`
@@ -115,6 +152,23 @@ local evidence command that was run.
 
 ```bash
 python3 ./scripts/validate-portability.py
+```
+
+### `./scripts/validate-script-hygiene.py`
+
+Validates helper script shebangs, executable bits, shell safety flags, Python
+entrypoints, and command-reference coverage.
+
+```bash
+python3 ./scripts/validate-script-hygiene.py
+```
+
+### `./scripts/validate-release-docs.py`
+
+Validates that `CHANGELOG.md` and `docs/releases/v*.md` stay in sync.
+
+```bash
+python3 ./scripts/validate-release-docs.py
 ```
 
 ### `./scripts/verify-reproducibility.sh`
