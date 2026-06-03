@@ -976,6 +976,146 @@ def validate_rejects_invalid_numeric_bounds(
         raise ValidationError(f"{example_name}: schema accepted invalid number {case_path}")
 
 
+def invalid_const_value(value: Any) -> Any:
+    if isinstance(value, bool):
+        return not value
+    if isinstance(value, int):
+        return value + 1
+    if isinstance(value, str):
+        return f"{value}__invalid"
+    if value is None:
+        return "__invalid_replay_lab_const__"
+    return "__invalid_replay_lab_const__"
+
+
+def invalid_enum_value(values: Any) -> Any:
+    if not isinstance(values, list):
+        raise ValidationError("enum must be an array")
+    candidate = "__invalid_replay_lab_enum__"
+    while candidate in values:
+        candidate = f"_{candidate}"
+    return candidate
+
+
+def collect_literal_cases(
+    schema: dict[str, Any],
+    rule: dict[str, Any],
+    value: Any,
+    path: str,
+    segments: list[str | int],
+    schema_path: Path,
+    cache: dict[Path, dict[str, Any]],
+) -> list[tuple[str, list[str | int], str, Any]]:
+    if "$ref" in rule:
+        target_schema, target_rule, target_path = resolve_ref(
+            schema,
+            schema_path,
+            str(rule["$ref"]),
+            cache,
+        )
+        return collect_literal_cases(
+            target_schema,
+            target_rule,
+            value,
+            path,
+            segments,
+            target_path,
+            cache,
+        )
+
+    cases: list[tuple[str, list[str | int], str, Any]] = []
+    if "const" in rule:
+        cases.append((path, list(segments), "expected const", invalid_const_value(rule["const"])))
+    elif "enum" in rule:
+        cases.append((path, list(segments), "expected one of", invalid_enum_value(rule["enum"])))
+
+    if isinstance(value, dict):
+        properties = rule.get("properties", {})
+        if not isinstance(properties, dict):
+            raise ValidationError(f"{path}: properties must be an object")
+        for key, child in properties.items():
+            if key not in value:
+                continue
+            if not isinstance(child, dict):
+                raise ValidationError(f"{path}.{key}: property schema must be an object")
+            cases.extend(
+                collect_literal_cases(
+                    schema,
+                    child,
+                    value[key],
+                    f"{path}.{key}",
+                    [*segments, key],
+                    schema_path,
+                    cache,
+                )
+            )
+
+    if isinstance(value, list) and "items" in rule:
+        item_rule = rule["items"]
+        if not isinstance(item_rule, dict):
+            raise ValidationError(f"{path}: items schema must be an object")
+        for index, item in enumerate(value):
+            cases.extend(
+                collect_literal_cases(
+                    schema,
+                    item_rule,
+                    item,
+                    f"{path}[{index}]",
+                    [*segments, index],
+                    schema_path,
+                    cache,
+                )
+            )
+
+    return cases
+
+
+def validate_rejects_invalid_literals(
+    example_path: Path,
+    schema_path: Path,
+) -> None:
+    schema_path = schema_path.resolve()
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    cache = {schema_path: schema}
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+
+    cases = collect_literal_cases(
+        schema,
+        schema,
+        example,
+        example_name,
+        [],
+        schema_path,
+        cache,
+    )
+    for case_path, segments, expected, invalid_value in cases:
+        mutated = deepcopy(example)
+        set_path_value(mutated, segments, invalid_value)
+        try:
+            validate(
+                schema,
+                schema,
+                mutated,
+                f"{example_name}#invalid-literal-{case_path}",
+                schema_path,
+                {schema_path: schema},
+            )
+        except ValidationError as exc:
+            if expected not in str(exc):
+                raise ValidationError(
+                    f"{example_name}: literal check for {case_path} failed "
+                    f"with unexpected error: {exc}"
+                ) from exc
+            continue
+        raise ValidationError(f"{example_name}: schema accepted invalid literal {case_path}")
+
+
 def percent(numerator: int, denominator: int) -> int:
     if denominator == 0:
         return 100 if numerator == 0 else 0
@@ -1286,6 +1426,7 @@ def main() -> int:
             validate_rejects_inverted_date_times(example, schema, require_nested_examples)
             validate_rejects_duplicate_unique_arrays(example, schema, require_nested_examples)
             validate_rejects_invalid_numeric_bounds(example, schema)
+            validate_rejects_invalid_literals(example, schema)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
             validate_rejects_stale_eval_summary(example, schema)

@@ -17,11 +17,11 @@ python3 ./scripts/validate-examples.py
 
 The validator is intentionally dependency-free and supports the JSON Schema
 features used by this repo, including `additionalProperties: false` for checked
-root and nested objects, `minLength` for required identity strings, local
-cross-schema `$ref` links, `pattern` checks for non-blank identity strings,
-`uniqueItems` checks for set-like arrays, numeric `minimum`/`maximum` bounds,
-RFC3339 `date-time` checks for timestamps, and eval summary totals derived from
-embedded replay runs.
+root and nested objects, `const`/`enum` checks for schema versions and status
+literals, `minLength` for required identity strings, local cross-schema `$ref`
+links, `pattern` checks for non-blank identity strings, `uniqueItems` checks for
+set-like arrays, numeric `minimum`/`maximum` bounds, RFC3339 `date-time` checks
+for timestamps, and eval summary totals derived from embedded replay runs.
 
 ## ReplayRun
 
@@ -124,6 +124,8 @@ contract exists.
 - Closed report objects reject undocumented fields at the replay/eval root and
   inside nested specs, tests, metrics, token usage, summaries, and embedded eval
   replay runs.
+- Schema versions are fixed with `const`, and replay/test statuses reject values
+  outside their documented enums.
 - Required identity strings are non-blank, including replay/eval IDs, agent
   names, checkpoint IDs, prompts, and commit anchors.
 - Set-like arrays reject duplicates, including eval `agents`, replay

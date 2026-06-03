@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.60 - 2026-06-03
+
+- Added schema-driven negative checks for JSON Schema `const` and `enum`
+  constraints.
+- Covered replay/eval `schema_version` constants plus replay and test status
+  enums in standalone reports and embedded eval replay runs.
+- Made schema-version and status-literal regressions fail locally if literal
+  constraints are removed or ignored.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.59 - 2026-06-03
 
 - Added schema-driven negative checks for closed JSON objects using

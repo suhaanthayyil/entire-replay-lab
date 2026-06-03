@@ -117,6 +117,8 @@ Replay Lab is intentionally diagnostic:
 - closed replay/eval objects are schema-checked against undocumented fields, so
   unexpected nested spec, test, metric, token, summary, or embedded-run keys do
   not pass local validation silently
+- schema versions and replay/test statuses are schema-checked as literals, so
+  unknown report versions or status strings do not pass local validation
 - required replay/eval identity strings are schema-checked as non-blank, so
   blank IDs, agents, checkpoint IDs, prompts, or commit anchors fail local
   validation instead of passing as present-but-useless strings
