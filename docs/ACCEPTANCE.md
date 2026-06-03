@@ -71,6 +71,8 @@ Proves:
   timeout error in saved reports
 - skipped test rows preserve the requested test command when setup, agent,
   checkpoint, or agent-availability failures prevent the command from running
+- report readers normalize missing legacy replay statuses to `failed` before
+  JSON output
 - report readers normalize missing legacy test statuses to `skipped` before
   JSON output
 - replay agents and optional test commands each receive their own `--timeout`

@@ -104,6 +104,8 @@ Replay Lab is intentionally diagnostic:
 - agent and test-command timeouts preserve the timeout cause and partial output
 - skipped test rows preserve the requested test command when earlier replay
   failures prevent execution
+- legacy reports with missing run statuses are normalized to failed runs before
+  rendering JSON
 - legacy reports with missing test statuses are normalized to skipped tests
   before rendering JSON
 - setup, agent, and test-command steps receive independent timeout contexts

@@ -215,6 +215,8 @@ Run a small eval:
 - Saved JSON lands under `.git/entire-replay/`.
 - Skipped test rows still preserve the requested test command when earlier
   replay failures prevent execution.
+- Legacy reports with sparse run objects still render with replay `status` set
+  to `failed`.
 - Legacy reports with sparse test objects still render with `test.status` set
   to `skipped`.
 - Worktree setup failures after checkpoint resolution still save a failed report

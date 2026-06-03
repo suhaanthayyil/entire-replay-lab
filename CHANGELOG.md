@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.48 - 2026-06-03
+
+- Normalized missing or empty replay `status` values to `failed` when reading
+  or printing reports.
+- Applied the same conservative default to replay runs embedded in eval reports,
+  keeping recomputed summaries aligned with the rendered JSON.
+- Strengthened Go coverage for standalone replay reports, eval reports, and
+  direct JSON rendering with missing run statuses.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.47 - 2026-06-03
 
 - Normalized missing or empty `test.status` values to `skipped` when reading or
