@@ -215,6 +215,8 @@ Run a small eval:
 - Saved JSON lands under `.git/entire-replay/`.
 - Worktree setup failures after checkpoint resolution still save a failed report
   with a skipped test status and stable empty changed-file array.
+- Diff-inspection failures still save a report warning and stable empty
+  `changed_files` array.
 - `--timeout` applies independently to the replay agent and optional test
   command rather than using one shared wall-clock budget.
 - `--keep-worktree` prints a path you can inspect without Replay Lab leaving

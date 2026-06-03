@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.42 - 2026-06-03
+
+- Kept replay reports schema-stable when post-run diff inspection fails,
+  recording a warning while preserving `changed_files` as an empty array.
+- Added focused Go coverage proving saved diff-inspection failure reports avoid
+  `changed_files: null`.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.41 - 2026-06-03
 
 - Saved a failed replay report when worktree setup fails after checkpoint

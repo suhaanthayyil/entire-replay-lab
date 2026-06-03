@@ -73,6 +73,8 @@ Proves:
   budget, so a slow successful agent does not shorten the test timeout window
 - worktree setup failures after checkpoint resolution still save a failed replay
   report with the spec, agent, model, skipped test status, and setup error
+- diff-inspection failures still save replay reports with a warning and a
+  stable empty `changed_files` array
 - replay diff collection sees untracked agent output without leaving
   intent-to-add index state behind in kept replay worktrees
 - cleanup failures preserve the leaked replay worktree path and warning in the

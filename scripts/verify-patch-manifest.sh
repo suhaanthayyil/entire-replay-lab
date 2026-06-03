@@ -83,7 +83,8 @@ for needle in \
   "TestReplayCheckpointReportsWorktreePathWhenCleanupFails" \
   "TestReplayCheckpointTimeoutBudgetAppliesSeparatelyToAgentAndTest" \
   "TestReplayCheckpointWarnsWhenInstalledSemanticScoringFails" \
-  "TestReplayCheckpointSavesReportWhenWorktreeSetupFails"
+  "TestReplayCheckpointSavesReportWhenWorktreeSetupFails" \
+  "TestReplayCheckpointKeepsStableChangedFilesWhenDiffInspectionFails"
 do
   if ! grep -Fq "$needle" "$ENTIRE_REPLAY_PATCH"; then
     echo "Patch missing required text: $needle" >&2

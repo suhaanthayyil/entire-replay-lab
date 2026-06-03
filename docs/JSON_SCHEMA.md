@@ -122,5 +122,7 @@ contract exists.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.
 - Failed test commands may include `test.error` with the launch, cancellation,
   or timeout cause.
+- `changed_files` remains an array, including when diff inspection fails and a
+  warning is recorded.
 - Missing optional integrations use explicit false/empty values instead of
   failing the whole run.

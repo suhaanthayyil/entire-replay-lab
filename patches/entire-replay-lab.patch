@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..e868e63e
+index 00000000..43f2ef52
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,2031 @@
+@@ -0,0 +1,2033 @@
 +package cli
 +
 +import (
@@ -209,10 +209,11 @@ index 00000000..e868e63e
 +}
 +
 +var (
-+	replayRunnerFor               = defaultReplayRunnerFor
-+	replayCommandForAgent         = defaultReplayCommandForAgent
-+	createReplayWorktreeForReplay = createReplayWorktree
-+	removeReplayWorktreeForReplay = removeReplayWorktree
++	replayRunnerFor                    = defaultReplayRunnerFor
++	replayCommandForAgent              = defaultReplayCommandForAgent
++	createReplayWorktreeForReplay      = createReplayWorktree
++	removeReplayWorktreeForReplay      = removeReplayWorktree
++	replayChangedFilesAndDiffForReplay = replayChangedFilesAndDiff
 +)
 +
 +const (
@@ -673,8 +674,9 @@ index 00000000..e868e63e
 +
 +	inspectionCtx, inspectionCancel := context.WithTimeout(ctx, replayInspectionTimeout)
 +	defer inspectionCancel()
-+	files, diff, diffErr := replayChangedFilesAndDiff(inspectionCtx, worktree, spec.BaseCommit)
++	files, diff, diffErr := replayChangedFilesAndDiffForReplay(inspectionCtx, worktree, spec.BaseCommit)
 +	if diffErr != nil {
++		run.ChangedFiles = []string{}
 +		run.Warnings = append(run.Warnings, fmt.Sprintf("failed to read replay diff: %v", diffErr))
 +	} else {
 +		run.ChangedFiles = files
@@ -2070,10 +2072,10 @@ index 00000000..e868e63e
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..b78e6ce6
+index 00000000..3f83a273
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1636 @@
+@@ -0,0 +1,1697 @@
 +package cli
 +
 +import (
@@ -2354,6 +2356,67 @@ index 00000000..b78e6ce6
 +	}
 +	if loaded.ChangedFiles == nil {
 +		t.Fatal("loaded ChangedFiles is nil, want stable empty JSON array")
++	}
++}
++
++func TestReplayCheckpointKeepsStableChangedFilesWhenDiffInspectionFails(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "updated fixture"}, nil
++	})
++	defer restore()
++
++	previousDiff := replayChangedFilesAndDiffForReplay
++	replayChangedFilesAndDiffForReplay = func(context.Context, string, string) ([]string, string, error) {
++		return nil, "", errors.New("diff refused")
++	}
++	defer func() { replayChangedFilesAndDiffForReplay = previousDiff }()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{Agent: fakeReplayAgent})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.Status != replayStatusPassed {
++		t.Fatalf("Status = %q, want passed", run.Status)
++	}
++	if run.ChangedFiles == nil {
++		t.Fatal("ChangedFiles is nil, want stable empty JSON array")
++	}
++	if len(run.ChangedFiles) != 0 {
++		t.Fatalf("ChangedFiles = %v, want empty when diff inspection fails", run.ChangedFiles)
++	}
++	if !slices.ContainsFunc(run.Warnings, func(warning string) bool {
++		return strings.Contains(warning, "failed to read replay diff") &&
++			strings.Contains(warning, "diff refused")
++	}) {
++		t.Fatalf("Warnings = %v, want diff inspection warning", run.Warnings)
++	}
++
++	loaded, err := readReplayRun(context.Background(), run.ID)
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if loaded.ChangedFiles == nil {
++		t.Fatal("loaded ChangedFiles is nil, want stable empty JSON array")
++	}
++	if len(loaded.ChangedFiles) != 0 {
++		t.Fatalf("loaded ChangedFiles = %v, want empty", loaded.ChangedFiles)
++	}
++	if !slices.ContainsFunc(loaded.Warnings, func(warning string) bool {
++		return strings.Contains(warning, "failed to read replay diff") &&
++			strings.Contains(warning, "diff refused")
++	}) {
++		t.Fatalf("loaded Warnings = %v, want diff inspection warning", loaded.Warnings)
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, loaded); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	if strings.Contains(out.String(), `"changed_files": null`) {
++		t.Fatalf("diff-inspection failure JSON contains null changed_files:\n%s", out.String())
 +	}
 +}
 +

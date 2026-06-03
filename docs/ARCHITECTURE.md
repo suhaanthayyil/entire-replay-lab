@@ -104,6 +104,8 @@ Replay Lab is intentionally diagnostic:
 - agent and test-command timeouts preserve the timeout cause and partial output
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value
+- diff-inspection failures are saved as replay warnings while `changed_files`
+  remains a schema-valid empty array
 - diff collection uses a temporary git index so kept replay worktrees remain
   natural to inspect, with untracked files still shown as untracked
 - semantic scoring uses a temporary git index and unreachable comparison commit,
