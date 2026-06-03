@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.10 - 2026-06-03
+
+- Added latest release tag commit verification.
+- Fixed release-note validation for multi-digit semver patches.
+- Made command-surface help checks robust under `pipefail`.
+
 ## v0.1.9 - 2026-06-03
 
 - Added enforced SHA-256 verification for the Replay Lab patch artifact.

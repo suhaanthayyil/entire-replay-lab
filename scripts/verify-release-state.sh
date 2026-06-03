@@ -95,4 +95,29 @@ if [[ "$LATEST_DOC" != "$LATEST_GH" ]]; then
   exit 1
 fi
 
-echo "OK release docs, local tags, and GitHub releases match; latest $LATEST_DOC."
+HEAD_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+LATEST_LOCAL_COMMIT="$(git -C "$ROOT" rev-list -n 1 "$LATEST_DOC")"
+if [[ "$LATEST_LOCAL_COMMIT" != "$HEAD_COMMIT" ]]; then
+  echo "Latest local tag $LATEST_DOC should point at current HEAD." >&2
+  echo "  tag:  $LATEST_LOCAL_COMMIT" >&2
+  echo "  HEAD: $HEAD_COMMIT" >&2
+  exit 1
+fi
+
+REMOTE_TAG_LINES="$(git -C "$ROOT" ls-remote --tags origin "refs/tags/$LATEST_DOC" "refs/tags/$LATEST_DOC^{}")"
+REMOTE_TAG_COMMIT="$(
+  printf '%s\n' "$REMOTE_TAG_LINES" | awk '$2 ~ /\^\{\}$/ { print $1; found=1 } END { if (!found) exit 1 }' \
+    || printf '%s\n' "$REMOTE_TAG_LINES" | awk 'NF >= 2 { print $1; exit }'
+)"
+if [[ -z "$REMOTE_TAG_COMMIT" ]]; then
+  echo "Remote origin tag $LATEST_DOC was not found." >&2
+  exit 1
+fi
+if [[ "$REMOTE_TAG_COMMIT" != "$LATEST_LOCAL_COMMIT" ]]; then
+  echo "Remote origin tag $LATEST_DOC differs from the local tag." >&2
+  echo "  remote: $REMOTE_TAG_COMMIT" >&2
+  echo "  local:  $LATEST_LOCAL_COMMIT" >&2
+  exit 1
+fi
+
+echo "OK release docs, local tags, and GitHub releases match; latest tag commit matches HEAD and origin; latest $LATEST_DOC."

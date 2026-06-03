@@ -19,8 +19,10 @@ require_help_contains() {
   shift
   local needle="$1"
   shift
+  local help_output
 
-  if ! "$ENTIRE_BIN" "$@" --help | grep -Fq -- "$needle"; then
+  help_output="$("$ENTIRE_BIN" "$@" --help)"
+  if ! grep -Fq -- "$needle" <<<"$help_output"; then
     echo "Missing $description in '$ENTIRE_BIN $* --help': $needle" >&2
     exit 1
   fi

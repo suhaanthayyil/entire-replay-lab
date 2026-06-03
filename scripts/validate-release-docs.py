@@ -25,18 +25,18 @@ def changelog_versions() -> list[str]:
     return versions
 
 
+def semver_key(version: str) -> tuple[int, int, int]:
+    major, minor, patch = version.removeprefix("v").split(".")
+    return int(major), int(minor), int(patch)
+
+
 def release_note_versions() -> list[str]:
     versions: list[str] = []
     for path in sorted(RELEASE_DIR.glob("v*.md")):
         version = path.stem
         if VERSION_RE.fullmatch(version):
             versions.append(version)
-    return versions
-
-
-def semver_key(version: str) -> tuple[int, int, int]:
-    major, minor, patch = version.removeprefix("v").split(".")
-    return int(major), int(minor), int(patch)
+    return sorted(versions, key=semver_key)
 
 
 def require(condition: bool, message: str, errors: list[str]) -> None:

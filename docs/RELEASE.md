@@ -44,6 +44,10 @@ After publishing, verify the remote release state:
 ./scripts/verify-release-state.sh
 ```
 
+This checks that release-note files, local tags, GitHub releases, and the latest
+origin tag all agree, and that the latest release tag points at the current
+commit.
+
 ## What To Include In Release Notes
 
 - what pain the release solves
