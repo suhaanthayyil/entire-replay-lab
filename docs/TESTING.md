@@ -17,6 +17,8 @@ It checks:
   undocumented additional fields where root or nested schemas are closed.
 - Schema versions and replay/test statuses reject values outside their local
   `const` and `enum` contracts.
+- Required replay/eval fields reject missing keys at root and nested object
+  levels through local `required` schema checks.
 - Required replay/eval identity strings reject empty or whitespace-only values
   through local `minLength` and `pattern` schema checks.
 - Set-like replay/eval arrays reject duplicate values through local

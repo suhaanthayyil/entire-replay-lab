@@ -119,6 +119,9 @@ Replay Lab is intentionally diagnostic:
   not pass local validation silently
 - schema versions and replay/test statuses are schema-checked as literals, so
   unknown report versions or status strings do not pass local validation
+- required replay/eval fields are schema-checked at root and nested object
+  levels, so sparse reports missing mandatory specs, status, tests, metrics, or
+  summary fields fail local validation
 - required replay/eval identity strings are schema-checked as non-blank, so
   blank IDs, agents, checkpoint IDs, prompts, or commit anchors fail local
   validation instead of passing as present-but-useless strings

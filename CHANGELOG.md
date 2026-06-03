@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.61 - 2026-06-03
+
+- Added schema-driven negative checks for JSON Schema `required` constraints.
+- Covered required keys at the replay/eval roots plus nested specs, tests,
+  metrics, eval summaries, and embedded eval replay runs.
+- Made missing-required-field regressions fail locally if required lists are
+  removed or ignored.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.60 - 2026-06-03
 
 - Added schema-driven negative checks for JSON Schema `const` and `enum`

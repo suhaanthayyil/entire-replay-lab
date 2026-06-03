@@ -23,6 +23,8 @@ Proves:
   report objects
 - schema validation rejects invalid schema versions and replay/test status
   literals
+- schema validation rejects missing required keys in root and nested report
+  objects
 - schema validation rejects empty or whitespace-only required identity strings
 - schema validation rejects duplicate entries in set-like agent and file arrays
 - schema validation rejects empty or whitespace-only file-list entries
