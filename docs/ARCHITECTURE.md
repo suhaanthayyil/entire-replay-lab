@@ -105,6 +105,8 @@ Replay Lab is intentionally diagnostic:
 - semantic scoring uses a temporary git index and unreachable comparison commit,
   so optional `entire-sem` analysis does not move replay worktree `HEAD` or
   rewrite the agent's index state
+- cleanup failures keep the surviving replay worktree path in the saved report
+  alongside the warning, even when `--keep-worktree` was not requested
 - large diffs and output are capped and marked as truncated
 - failed reports show concise output with the full data in JSON
 

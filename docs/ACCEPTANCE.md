@@ -71,6 +71,8 @@ Proves:
   timeout error in saved reports
 - replay diff collection sees untracked agent output without leaving
   intent-to-add index state behind in kept replay worktrees
+- cleanup failures preserve the leaked replay worktree path and warning in the
+  saved report
 - optional semantic scoring sees staged and untracked replay output without
   moving replay worktree `HEAD` or changing its real index state
 - patch refresh reproduces the checked-in patch from the normal dirty patched
@@ -150,6 +152,8 @@ Expected:
 - output includes checkpoint, agent, status, commit range, file metrics, test
   status, optional semantic similarity, risk, and saved report path
 - saved JSON appears under `.git/entire-replay/runs/`
+- if automatic cleanup fails, the saved JSON includes the surviving worktree
+  path plus a cleanup warning
 
 ## Multi-Agent Eval Acceptance
 

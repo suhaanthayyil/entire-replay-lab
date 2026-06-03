@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..a2004cf0
+index 00000000..a83da08a
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1995 @@
+@@ -0,0 +1,1997 @@
 +package cli
 +
 +import (
@@ -209,8 +209,9 @@ index 00000000..a2004cf0
 +}
 +
 +var (
-+	replayRunnerFor       = defaultReplayRunnerFor
-+	replayCommandForAgent = defaultReplayCommandForAgent
++	replayRunnerFor               = defaultReplayRunnerFor
++	replayCommandForAgent         = defaultReplayCommandForAgent
++	removeReplayWorktreeForReplay = removeReplayWorktree
 +)
 +
 +const (
@@ -679,7 +680,8 @@ index 00000000..a2004cf0
 +	run.DurationMS = run.FinishedAt.Sub(run.StartedAt).Milliseconds()
 +	if opts.KeepWorktree {
 +		run.WorktreePath = worktree
-+	} else if err := removeReplayWorktree(context.Background(), repoRoot, worktree); err != nil {
++	} else if err := removeReplayWorktreeForReplay(context.Background(), repoRoot, worktree); err != nil {
++		run.WorktreePath = worktree
 +		run.Warnings = append(run.Warnings, fmt.Sprintf("failed to remove replay worktree: %v", err))
 +	}
 +	path, err := saveReplayRun(ctx, run)
@@ -2034,10 +2036,10 @@ index 00000000..a2004cf0
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..fe48f1ec
+index 00000000..6ad2e06f
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1447 @@
+@@ -0,0 +1,1497 @@
 +package cli
 +
 +import (
@@ -2207,6 +2209,56 @@ index 00000000..fe48f1ec
 +			t.Errorf("remove replay worktree: %v", err)
 +		}
 +	})
++}
++
++func TestReplayCheckpointReportsWorktreePathWhenCleanupFails(t *testing.T) {
++	repoRoot, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, _ ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		return ReplayRunnerResult{Output: "no changes"}, nil
++	})
++	defer restore()
++
++	previousRemove := removeReplayWorktreeForReplay
++	removeReplayWorktreeForReplay = func(context.Context, string, string) error {
++		return errors.New("cleanup refused")
++	}
++	defer func() { removeReplayWorktreeForReplay = previousRemove }()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{Agent: fakeReplayAgent})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.WorktreePath == "" {
++		t.Fatal("WorktreePath is empty after cleanup failure")
++	}
++	if _, err := os.Stat(run.WorktreePath); err != nil {
++		t.Fatalf("reported worktree missing: %v", err)
++	}
++	t.Cleanup(func() {
++		if err := removeReplayWorktree(context.Background(), repoRoot, run.WorktreePath); err != nil {
++			t.Errorf("remove replay worktree: %v", err)
++		}
++	})
++	if !slices.ContainsFunc(run.Warnings, func(warning string) bool {
++		return strings.Contains(warning, "failed to remove replay worktree") &&
++			strings.Contains(warning, "cleanup refused")
++	}) {
++		t.Fatalf("Warnings = %v, want cleanup failure warning", run.Warnings)
++	}
++
++	loaded, err := readReplayRun(context.Background(), run.ID)
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if loaded.WorktreePath != run.WorktreePath {
++		t.Fatalf("loaded WorktreePath = %q, want %q", loaded.WorktreePath, run.WorktreePath)
++	}
++	if !slices.ContainsFunc(loaded.Warnings, func(warning string) bool {
++		return strings.Contains(warning, "failed to remove replay worktree") &&
++			strings.Contains(warning, "cleanup refused")
++	}) {
++		t.Fatalf("loaded Warnings = %v, want cleanup failure warning", loaded.Warnings)
++	}
 +}
 +
 +func TestReplayCheckpointDiffUsesTemporaryIndexForKeptWorktree(t *testing.T) {

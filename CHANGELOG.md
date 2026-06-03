@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.38 - 2026-06-03
+
+- Preserved the replay worktree path in saved reports when automatic cleanup
+  fails, so leaked non-kept worktrees remain inspectable and removable.
+- Added focused Go coverage for cleanup-failure report persistence.
+- Updated acceptance, architecture, testing, and reproducibility docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.37 - 2026-06-03
 
 - Hardened eval runs so checkpoint resolution failures still emit one

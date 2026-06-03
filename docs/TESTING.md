@@ -214,6 +214,8 @@ Run a small eval:
 - Saved JSON lands under `.git/entire-replay/`.
 - `--keep-worktree` prints a path you can inspect without Replay Lab leaving
   intent-to-add index state behind.
+- Cleanup failures still save the surviving replay worktree path with the
+  warning, so operators can inspect or remove the leaked worktree.
 - Optional semantic scoring preserves kept replay worktree `HEAD` and index
   state while still seeing staged and untracked replay output.
 - Missing agents or missing `entire-sem` degrade clearly without corrupting the
