@@ -120,31 +120,37 @@ if [[ "$REMOTE_TAG_COMMIT" != "$LATEST_LOCAL_COMMIT" ]]; then
   exit 1
 fi
 
-LATEST_DOC_PATH="$ROOT/docs/releases/$LATEST_DOC.md"
-LATEST_BODY_FILE="$WORKDIR/latest-body.md"
-gh release view "$LATEST_DOC" --repo "$REPO_SLUG" --json body --jq '.body' >"$LATEST_BODY_FILE"
-python3 - "$LATEST_DOC_PATH" "$LATEST_BODY_FILE" "$LATEST_DOC" <<'PY'
+BODY_DIR="$WORKDIR/bodies"
+mkdir -p "$BODY_DIR"
+while IFS= read -r VERSION; do
+  gh release view "$VERSION" --repo "$REPO_SLUG" --json body --jq '.body' >"$BODY_DIR/$VERSION.md"
+done <"$DOC_FILE"
+
+python3 - "$ROOT" "$DOC_FILE" "$BODY_DIR" <<'PY'
 import difflib
 import sys
 from pathlib import Path
 
-doc_path = Path(sys.argv[1])
-body_path = Path(sys.argv[2])
-version = sys.argv[3]
-expected = doc_path.read_text(encoding="utf-8").strip()
-actual = body_path.read_text(encoding="utf-8").strip()
-if expected != actual:
-    print(f"GitHub release body for {version} differs from {doc_path}.", file=sys.stderr)
-    diff = difflib.unified_diff(
-        expected.splitlines(),
-        actual.splitlines(),
-        fromfile=str(doc_path),
-        tofile=f"github:{version}",
-        lineterm="",
-    )
-    for line in diff:
-        print(line, file=sys.stderr)
-    raise SystemExit(1)
+root = Path(sys.argv[1])
+doc_file = Path(sys.argv[2])
+body_dir = Path(sys.argv[3])
+for version in doc_file.read_text(encoding="utf-8").splitlines():
+    doc_path = root / "docs" / "releases" / f"{version}.md"
+    body_path = body_dir / f"{version}.md"
+    expected = doc_path.read_text(encoding="utf-8").strip()
+    actual = body_path.read_text(encoding="utf-8").strip()
+    if expected != actual:
+        print(f"GitHub release body for {version} differs from {doc_path}.", file=sys.stderr)
+        diff = difflib.unified_diff(
+            expected.splitlines(),
+            actual.splitlines(),
+            fromfile=str(doc_path),
+            tofile=f"github:{version}",
+            lineterm="",
+        )
+        for line in diff:
+            print(line, file=sys.stderr)
+        raise SystemExit(1)
 PY
 
-echo "OK release docs, local tags, and GitHub releases match; latest body and latest tag commit match HEAD and origin; latest $LATEST_DOC."
+echo "OK release docs, local tags, and GitHub releases match; release bodies match; latest tag commit matches HEAD and origin; latest $LATEST_DOC."

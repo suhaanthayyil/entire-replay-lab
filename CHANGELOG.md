@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.12 - 2026-06-03
+
+- Extended release body verification to every published release.
+
 ## v0.1.11 - 2026-06-03
 
 - Added latest GitHub release body verification against checked-in release notes.
