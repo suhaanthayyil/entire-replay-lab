@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..f46b39cc
+index 00000000..39b76ae8
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1911 @@
+@@ -0,0 +1,1925 @@
 +package cli
 +
 +import (
@@ -287,6 +287,9 @@ index 00000000..f46b39cc
 +		Short: "Replay one checkpoint with one agent",
 +		Args:  cobra.ExactArgs(1),
 +		RunE: func(cmd *cobra.Command, args []string) error {
++			if err := validateReplayTimeoutFlag(cmd, opts.Timeout); err != nil {
++				return err
++			}
 +			run, err := runReplayCheckpoint(cmd.Context(), args[0], opts)
 +			if err != nil {
 +				return err
@@ -346,6 +349,9 @@ index 00000000..f46b39cc
 +		Use:   "run",
 +		Short: "Run a replay eval",
 +		RunE: func(cmd *cobra.Command, _ []string) error {
++			if err := validateReplayTimeoutFlag(cmd, opts.Timeout); err != nil {
++				return err
++			}
 +			run, err := runReplayEval(cmd.Context(), opts)
 +			if err != nil {
 +				return err
@@ -389,6 +395,14 @@ index 00000000..f46b39cc
 +	}
 +	cmd.Flags().BoolVar(&opts.JSON, "json", false, "Output eval report as JSON")
 +	return cmd
++}
++
++func validateReplayTimeoutFlag(cmd *cobra.Command, timeout time.Duration) error {
++	flag := cmd.Flags().Lookup("timeout")
++	if flag != nil && flag.Changed && timeout <= 0 {
++		return fmt.Errorf("--timeout must be positive")
++	}
++	return nil
 +}
 +
 +func runReplayCheckpoint(ctx context.Context, checkpointRef string, opts replayCheckpointOptions) (*ReplayRun, error) {
@@ -1950,10 +1964,10 @@ index 00000000..f46b39cc
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..bb0bcf21
+index 00000000..9f55a83c
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1255 @@
+@@ -0,0 +1,1294 @@
 +package cli
 +
 +import (
@@ -1978,6 +1992,7 @@ index 00000000..bb0bcf21
 +	"github.com/entireio/cli/cmd/entire/cli/trailers"
 +	"github.com/entireio/cli/redact"
 +	git "github.com/go-git/go-git/v6"
++	"github.com/spf13/cobra"
 +)
 +
 +const (
@@ -2628,6 +2643,44 @@ index 00000000..bb0bcf21
 +				t.Fatal("runReplayEval() error = nil, want limit validation error")
 +			}
 +			if !strings.Contains(err.Error(), "--limit must be positive") {
++				t.Fatalf("error = %v", err)
++			}
++		})
++	}
++}
++
++func TestReplayCommandsRejectNonPositiveTimeoutFlag(t *testing.T) {
++	for _, tc := range []struct {
++		name string
++		cmd  *cobra.Command
++		args []string
++	}{
++		{
++			name: "replay zero timeout",
++			cmd:  newReplayCmd(),
++			args: []string{"checkpoint", "deadbeef", "--timeout", "0s"},
++		},
++		{
++			name: "eval negative timeout",
++			cmd:  newEvalCmd(),
++			args: []string{"run", "--checkpoint", "deadbeef", "--timeout", "-1s"},
++		},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			restoreRunner := stubReplayRunner(func(_ context.Context, _ ReplayRunnerRequest) (ReplayRunnerResult, error) {
++				t.Fatal("runner should not execute when timeout is invalid")
++				return ReplayRunnerResult{}, nil
++			})
++			defer restoreRunner()
++
++			tc.cmd.SetOut(&bytes.Buffer{})
++			tc.cmd.SetErr(&bytes.Buffer{})
++			tc.cmd.SetArgs(tc.args)
++			err := tc.cmd.ExecuteContext(context.Background())
++			if err == nil {
++				t.Fatal("ExecuteContext() error = nil, want timeout validation error")
++			}
++			if !strings.Contains(err.Error(), "--timeout must be positive") {
 +				t.Fatalf("error = %v", err)
 +			}
 +		})

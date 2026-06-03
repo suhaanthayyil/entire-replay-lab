@@ -77,7 +77,7 @@ checked-in artifact without changing the source checkout's git status.
 Checks that the built Replay Lab binary exposes the expected `replay` and `eval`
 commands, subcommands, required user-facing flags, and important CLI
 negative-path errors such as invalid replay agents and non-positive
-`--from-checkpoints --limit` values.
+`--from-checkpoints --limit` or `--timeout` values.
 
 ```bash
 ./scripts/build-cli.sh

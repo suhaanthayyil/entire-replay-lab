@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.33 - 2026-06-03
+
+- Hardened replay/eval timeout handling so explicit non-positive `--timeout`
+  values fail before agent lookup or checkpoint discovery instead of disabling
+  the replay timeout.
+- Added Go and binary command-surface coverage for replay and eval timeout
+  validation.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.32 - 2026-06-03
 
 - Added `scripts/check-refresh-patch.sh` to prove patch refresh reproduces the

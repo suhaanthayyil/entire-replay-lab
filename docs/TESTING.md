@@ -81,7 +81,8 @@ To verify the built command surface:
 This checks the replay/eval command tree plus the required public flags used by
 the README, demo, smoke, and release docs. It also verifies invalid replay
 agent selections fail with clear messages, and that non-positive
-`--from-checkpoints --limit` values fail before checkpoint discovery.
+`--from-checkpoints --limit` and `--timeout` values fail before checkpoint
+discovery or agent launch.
 
 To verify saved report rendering:
 

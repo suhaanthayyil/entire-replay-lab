@@ -12,7 +12,7 @@ The shared defaults live in `scripts/replay-lab-env.sh`:
 ENTIRE_CLI_REPO=https://github.com/entireio/cli.git
 ENTIRE_CLI_REF=e858fb537e70b8008a10f712cb73588cb67aacf2
 ENTIRE_REPLAY_PATCH=patches/entire-replay-lab.patch
-ENTIRE_REPLAY_PATCH_SHA256=01457c3f23877d32444fdcde4becaf9b9cb26ad461ba43a350c653fba3e38109
+ENTIRE_REPLAY_PATCH_SHA256=d264292b62354f558997a078122fcbab67aab2c412aabb56a23f0183480a7420
 ```
 
 `build-cli.sh`, `check-patch.sh`, and `refresh-patch.sh` all source that file.

@@ -81,5 +81,11 @@ require_command_fails_contains "replay checkpoint rejecting unknown agents" \
 require_command_fails_contains "eval run rejecting non-positive checkpoint limit" \
   "--limit must be positive when using --from-checkpoints" \
   eval run --from-checkpoints --limit 0
+require_command_fails_contains "replay checkpoint rejecting non-positive timeout" \
+  "--timeout must be positive" \
+  replay checkpoint deadbeef --timeout 0s
+require_command_fails_contains "eval run rejecting non-positive timeout" \
+  "--timeout must be positive" \
+  eval run --checkpoint deadbeef --timeout 0s
 
 echo "OK Replay/Eval command surface is available in $ENTIRE_BIN."
