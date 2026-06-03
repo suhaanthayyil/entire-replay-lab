@@ -22,6 +22,7 @@ Proves:
 - schema validation rejects empty or whitespace-only required identity strings
 - schema validation rejects duplicate entries in set-like agent and file arrays
 - schema validation rejects empty or whitespace-only file-list entries
+- schema validation rejects malformed replay/eval timestamps
 - schemas parse
 - patch file exists and includes Replay Lab implementation files
 - patch file only touches the expected upstream files

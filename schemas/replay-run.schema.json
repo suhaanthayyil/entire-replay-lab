@@ -43,10 +43,12 @@
       ]
     },
     "started_at": {
-      "type": "string"
+      "type": "string",
+      "format": "date-time"
     },
     "finished_at": {
-      "type": "string"
+      "type": "string",
+      "format": "date-time"
     },
     "duration_ms": {
       "type": "integer",

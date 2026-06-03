@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.56 - 2026-06-03
+
+- Added local JSON Schema `format: date-time` support for RFC3339 timestamp
+  validation.
+- Replay and eval `started_at`/`finished_at` fields now reject malformed
+  timestamp strings in the schema contract.
+- Added validator negative checks for standalone replay timestamps, eval
+  wrapper timestamps, and embedded eval replay timestamps.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.55 - 2026-06-03
 
 - Required replay file-list entries now reject empty or whitespace-only values

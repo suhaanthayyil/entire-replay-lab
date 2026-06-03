@@ -121,6 +121,8 @@ Replay Lab is intentionally diagnostic:
   duplicate entries would make report comparison noisier without adding facts
 - file-list evidence is schema-checked as non-blank, so empty path strings do
   not masquerade as changed, touched, missing, extra, or risky files
+- replay and eval timestamps are schema-checked as RFC3339 date-time strings
+  instead of accepting arbitrary text
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value
 - diff-inspection failures are saved as replay warnings while `changed_files`

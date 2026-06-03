@@ -11,11 +11,15 @@ import json
 import re
 import sys
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+DATE_TIME_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 
 class ValidationError(Exception):
@@ -43,6 +47,16 @@ def type_name(value: Any) -> str:
     if value is None:
         return "null"
     return type(value).__name__
+
+
+def is_date_time(value: str) -> bool:
+    if DATE_TIME_RE.fullmatch(value) is None:
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
 
 
 def load_schema(path: Path, cache: dict[Path, dict[str, Any]]) -> dict[str, Any]:
@@ -140,6 +154,13 @@ def validate(
                 ) from exc
             if not matches_pattern:
                 raise ValidationError(f"{path}: expected string matching pattern {pattern!r}")
+        format_name = rule.get("format")
+        if format_name is not None:
+            if format_name == "date-time":
+                if not is_date_time(value):
+                    raise ValidationError(f"{path}: expected RFC3339 date-time string")
+            else:
+                raise ValidationError(f"{path}: unsupported string format {format_name!r}")
 
     if type_name(value) == "integer":
         minimum = rule.get("minimum")
@@ -432,6 +453,67 @@ def validate_rejects_invalid_file_array_items(
         raise ValidationError(
             f"{example_name}: schema accepted invalid file-array item in {case_path}"
         )
+
+
+def validate_rejects_invalid_date_times(
+    example_path: Path,
+    schema_path: Path,
+    require_nested_examples: bool,
+) -> None:
+    schema_path = schema_path.resolve()
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+
+    cases: list[tuple[str, dict[str, Any]]] = []
+
+    def add_case(case_path: str, mutated_case: dict[str, Any]) -> None:
+        cases.append((case_path, mutated_case))
+
+    for key in ("started_at", "finished_at"):
+        if key in example:
+            mutated = deepcopy(example)
+            mutated[key] = "not-a-date"
+            add_case(key, mutated)
+
+    if require_nested_examples and schema_path.name == "eval-run.schema.json":
+        runs = example.get("runs")
+        if not isinstance(runs, list) or not runs:
+            raise ValidationError(f"{example_name}.runs: expected non-empty array")
+        for index, run in enumerate(runs):
+            if not isinstance(run, dict):
+                continue
+            for key in ("started_at", "finished_at"):
+                if key in run:
+                    mutated = deepcopy(example)
+                    mutated["runs"][index][key] = "not-a-date"
+                    add_case(f"runs[{index}].{key}", mutated)
+            break
+
+    for case_path, mutated_case in cases:
+        cache = {schema_path: schema}
+        try:
+            validate(
+                schema,
+                schema,
+                mutated_case,
+                f"{example_name}#invalid-date-{case_path}",
+                schema_path,
+                cache,
+            )
+        except ValidationError as exc:
+            if "expected RFC3339 date-time string" not in str(exc):
+                raise ValidationError(
+                    f"{example_name}: date-time check for {case_path} failed "
+                    f"with unexpected error: {exc}"
+                ) from exc
+            continue
+        raise ValidationError(f"{example_name}: schema accepted invalid date-time {case_path}")
 
 
 def validate_rejects_duplicate_unique_arrays(
@@ -845,6 +927,7 @@ def main() -> int:
             validate_rejects_extra_field(example, schema)
             validate_rejects_invalid_required_strings(example, schema, require_nested_examples)
             validate_rejects_invalid_file_array_items(example, schema, require_nested_examples)
+            validate_rejects_invalid_date_times(example, schema, require_nested_examples)
             validate_rejects_duplicate_unique_arrays(example, schema, require_nested_examples)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)

@@ -19,8 +19,8 @@ The validator is intentionally dependency-free and supports the JSON Schema
 features used by this repo, including `additionalProperties: false` for the
 checked example payloads, `minLength` for required identity strings, local
 cross-schema `$ref` links, `pattern` checks for non-blank identity strings,
-`uniqueItems` checks for set-like arrays, and eval summary totals derived from
-embedded replay runs.
+`uniqueItems` checks for set-like arrays, RFC3339 `date-time` checks for
+timestamps, and eval summary totals derived from embedded replay runs.
 
 ## ReplayRun
 
@@ -125,6 +125,8 @@ contract exists.
 - Set-like arrays reject duplicates, including eval `agents`, replay
   `changed_files`, replay spec `files_touched`, and metric file buckets.
 - File-list entries are non-blank wherever those arrays appear.
+- `started_at` and `finished_at` values are RFC3339 date-time strings when
+  present.
 - Large `diff` and `output` strings may be truncated.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.
 - Failed test commands may include `test.error` with the launch, cancellation,

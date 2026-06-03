@@ -20,6 +20,8 @@ It checks:
 - Set-like replay/eval arrays reject duplicate values through local
   `uniqueItems` schema checks.
 - Replay file-list arrays reject empty or whitespace-only entries.
+- Replay/eval timestamps reject malformed values through local `date-time`
+  format checks.
 - Eval examples validate each embedded replay run against the ReplayRun schema.
 - Eval summaries are checked against their embedded replay runs, including
   status counts, pass rate, averages, risk, duration, and token totals.
@@ -223,6 +225,7 @@ Run a small eval:
 - Saved JSON keeps selected agents and file-list evidence deduplicated where
   the schema treats those arrays as sets.
 - Saved JSON does not use blank strings as file-list evidence.
+- Saved JSON timestamps are valid RFC3339 date-time strings.
 - Skipped test rows still preserve the requested test command when earlier
   replay failures prevent execution.
 - Legacy reports with sparse run objects still render with replay `status` set

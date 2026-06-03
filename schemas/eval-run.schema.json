@@ -21,10 +21,12 @@
       "pattern": "\\S"
     },
     "started_at": {
-      "type": "string"
+      "type": "string",
+      "format": "date-time"
     },
     "finished_at": {
-      "type": "string"
+      "type": "string",
+      "format": "date-time"
     },
     "agents": {
       "type": "array",
