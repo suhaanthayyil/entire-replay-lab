@@ -92,6 +92,12 @@ def validate(schema: dict[str, Any], rule: dict[str, Any], value: Any, path: str
         properties = rule.get("properties", {})
         if not isinstance(properties, dict):
             raise ValidationError(f"{path}: properties must be an object")
+        if rule.get("additionalProperties") is False:
+            extra = sorted(set(value) - set(properties))
+            if extra:
+                raise ValidationError(
+                    f"{path}: unexpected additional key(s): {', '.join(extra)}"
+                )
         for key, child in properties.items():
             if key in value:
                 if not isinstance(child, dict):
@@ -117,6 +123,29 @@ def validate_file(example_rel: str, schema_rel: str) -> None:
     print(f"OK {example_rel} matches {schema_rel}")
 
 
+def validate_rejects_extra_field(example_rel: str, schema_rel: str) -> None:
+    example_path = ROOT / example_rel
+    schema_path = ROOT / schema_rel
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_rel}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_rel}: schema root must be an object")
+    mutated = dict(example)
+    mutated["__unexpected_replay_lab_field__"] = True
+    try:
+        validate(schema, schema, mutated, f"{example_rel}#negative")
+    except ValidationError as exc:
+        if "unexpected additional key" not in str(exc):
+            raise ValidationError(
+                f"{example_rel}: negative additionalProperties check failed with "
+                f"unexpected error: {exc}"
+            ) from exc
+        return
+    raise ValidationError(f"{example_rel}: schema accepted an undocumented extra field")
+
+
 def main() -> int:
     pairs = [
         ("examples/replay-run.json", "schemas/replay-run.schema.json"),
@@ -125,6 +154,7 @@ def main() -> int:
     try:
         for example, schema in pairs:
             validate_file(example, schema)
+            validate_rejects_extra_field(example, schema)
     except (OSError, json.JSONDecodeError, ValidationError) as exc:
         print(f"ERROR {exc}", file=sys.stderr)
         return 1

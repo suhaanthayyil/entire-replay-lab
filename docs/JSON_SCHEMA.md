@@ -1,6 +1,6 @@
 # JSON Shape
 
-The prototype writes stable, additive JSON with `schema_version: 1`.
+The prototype writes stable JSON with `schema_version: 1`.
 
 Machine-readable schema files live in:
 
@@ -16,7 +16,8 @@ python3 ./scripts/validate-examples.py
 ```
 
 The validator is intentionally dependency-free and supports the JSON Schema
-features used by this repo.
+features used by this repo, including `additionalProperties: false` for the
+checked example payloads.
 
 ## ReplayRun
 
@@ -80,7 +81,8 @@ features used by this repo.
 
 ## Stability Rules
 
-- New fields should be additive.
+- New fields should be added to the schema, docs, and examples in the same
+  change.
 - `schema_version` changes only for breaking JSON changes.
 - Large `diff` and `output` strings may be truncated.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.

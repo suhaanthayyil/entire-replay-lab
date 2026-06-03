@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.17 - 2026-06-03
+
+- Enforced closed JSON schema objects for checked Replay/Eval examples.
+
 ## v0.1.16 - 2026-06-03
 
 - Added helper script hygiene and command-reference coverage validation.

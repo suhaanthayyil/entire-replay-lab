@@ -13,7 +13,8 @@ Run this before committing docs, schemas, or scripts:
 It checks:
 
 - JSON examples parse successfully.
-- JSON examples validate against the local schemas.
+- JSON examples validate against the local schemas, including rejection of
+  undocumented additional fields where the schema is closed.
 - Schemas parse successfully.
 - Project metadata, README badges, and MIT license text stay consistent.
 - Main docs exist and include the important setup sections.

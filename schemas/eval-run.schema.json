@@ -3,6 +3,7 @@
   "$id": "https://github.com/suhaanthayyil/entire-replay-lab/schemas/eval-run.schema.json",
   "title": "ReplayEvalRun",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "schema_version",
     "id",
@@ -45,6 +46,7 @@
   "$defs": {
     "agent_summary": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "agent",
         "runs",

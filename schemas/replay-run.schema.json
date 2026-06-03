@@ -3,6 +3,7 @@
   "$id": "https://github.com/suhaanthayyil/entire-replay-lab/schemas/replay-run.schema.json",
   "title": "ReplayRun",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "schema_version",
     "id",
@@ -93,6 +94,7 @@
   "$defs": {
     "replay_spec": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "checkpoint_id",
         "prompt",
@@ -135,6 +137,7 @@
     },
     "test_run": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "status"
       ],
@@ -166,6 +169,7 @@
     },
     "metrics": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "file_precision",
         "file_recall",
@@ -225,6 +229,7 @@
     },
     "token_usage": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "input_tokens": {
           "type": "integer",
