@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.26 - 2026-06-03
+
+- Extended `scripts/check-build-lock.sh` to verify stale lock cleanup and
+  active-lock timeout behavior.
+- Updated command docs and repo verification to require the stronger lock
+  fixture.
+
 ## v0.1.25 - 2026-06-03
 
 - Added `scripts/check-build-lock.sh` to prove concurrent `build-cli.sh`

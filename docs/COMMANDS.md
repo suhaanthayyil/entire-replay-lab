@@ -27,7 +27,8 @@ The default repo/ref/patch values live in `scripts/replay-lab-env.sh`.
 ### `./scripts/check-build-lock.sh`
 
 Runs two `build-cli.sh` invocations concurrently and verifies the repo-local
-build lock serializes access to the shared patched checkout safely.
+build lock serializes access to the shared patched checkout safely. It also
+checks stale-lock cleanup and active-lock timeout behavior.
 
 ```bash
 ./scripts/check-build-lock.sh
