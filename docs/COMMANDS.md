@@ -11,12 +11,15 @@ This repo has two command layers:
 
 Builds `bin/entire` by cloning `entireio/cli`, checking out the pinned base
 commit, applying `patches/entire-replay-lab.patch`, and compiling the CLI.
+Builds take a repo-local lock under `tmp/` so concurrent smoke, release, and
+manual build runs do not mutate the shared patched checkout at the same time.
 
 Useful overrides:
 
 ```bash
 ENTIRE_CLI_SOURCE=/path/to/local/cli ./scripts/build-cli.sh
 ENTIRE_CLI_REPO=https://github.com/<user>/cli.git ENTIRE_CLI_REF=<ref> ./scripts/build-cli.sh
+ENTIRE_BUILD_LOCK_TIMEOUT=60 ./scripts/build-cli.sh
 ```
 
 The default repo/ref/patch values live in `scripts/replay-lab-env.sh`.
@@ -297,9 +300,10 @@ Useful flags:
 - `--json`
 - `--timeout <duration>`
 
-`--agent all` expands to the built-in Entire coder list: `claude-code`,
-`codex`, `gemini`, `cursor`, `copilot-cli`, `opencode`, `factoryai-droid`,
-and `pi`. Claude Code, Codex, and Gemini run locally today. The other
+`--agent all` expands from Entire's user-facing built-in coder registry. Today
+that is `claude-code`, `codex`, `gemini`, `copilot-cli`, `cursor`,
+`factoryai-droid`, `opencode`, and `pi`. Claude Code, Codex, and Gemini run
+locally today. The other
 coder integrations are included as skipped rows until a replay launcher exists.
 Common aliases are accepted for convenience: `gemini-cli`, `cursor-cli`, and
 `copilot`.

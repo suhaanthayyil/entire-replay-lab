@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..64a69c0a
+index 00000000..ec9072b5
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1834 @@
+@@ -0,0 +1,1853 @@
 +package cli
 +
 +import (
@@ -229,21 +229,40 @@ index 00000000..64a69c0a
 +	replayTestStatusSkipped       = replayStatusSkipped
 +)
 +
-+var replayKnownAgents = []string{
-+	string(agent.AgentNameClaudeCode),
-+	string(agent.AgentNameCodex),
-+	string(agent.AgentNameGemini),
-+	string(agent.AgentNameCursor),
-+	string(agent.AgentNameCopilotCLI),
-+	string(agent.AgentNameOpenCode),
-+	string(agent.AgentNameFactoryAIDroid),
-+	string(agent.AgentNamePi),
-+}
-+
 +var replayLaunchableAgents = []string{
 +	string(agent.AgentNameClaudeCode),
 +	string(agent.AgentNameCodex),
 +	string(agent.AgentNameGemini),
++}
++
++func replayKnownAgents() []string {
++	return orderReplayAgents(agent.StringList())
++}
++
++func orderReplayAgents(agentNames []string) []string {
++	seen := make(map[string]struct{}, len(agentNames))
++	for _, name := range agentNames {
++		name = canonicalReplayAgentName(name)
++		if name == "" || name == replayAgentAll {
++			continue
++		}
++		seen[name] = struct{}{}
++	}
++
++	ordered := make([]string, 0, len(seen))
++	for _, name := range replayLaunchableAgents {
++		if _, ok := seen[name]; ok {
++			ordered = append(ordered, name)
++			delete(seen, name)
++		}
++	}
++
++	remaining := make([]string, 0, len(seen))
++	for name := range seen {
++		remaining = append(remaining, name)
++	}
++	sort.Strings(remaining)
++	return append(ordered, remaining...)
 +}
 +
 +func newReplayCmd() *cobra.Command {
@@ -668,7 +687,7 @@ index 00000000..64a69c0a
 +		if isKnownReplayAgent(agentName) {
 +			return fmt.Errorf("agent %q is supported by Entire but is not launchable by Replay Lab yet; launchable replay agents: %s", agentName, strings.Join(replayLaunchableAgents, ", "))
 +		}
-+		return fmt.Errorf("unknown replay agent %q; known Entire coders: %s", agentName, strings.Join(replayKnownAgents, ", "))
++		return fmt.Errorf("unknown replay agent %q; known Entire coders: %s", agentName, strings.Join(replayKnownAgents(), ", "))
 +	}
 +	command := replayCommandForAgent(agentName)
 +	if command == "" {
@@ -714,7 +733,7 @@ index 00000000..64a69c0a
 +			continue
 +		}
 +		if agentName == replayAgentAll {
-+			expanded = append(expanded, replayKnownAgents...)
++			expanded = append(expanded, replayKnownAgents()...)
 +			continue
 +		}
 +		expanded = append(expanded, agentName)
@@ -724,7 +743,7 @@ index 00000000..64a69c0a
 +
 +func isKnownReplayAgent(agentName string) bool {
 +	agentName = canonicalReplayAgentName(agentName)
-+	for _, known := range replayKnownAgents {
++	for _, known := range replayKnownAgents() {
 +		if known == agentName {
 +			return true
 +		}
@@ -1873,10 +1892,10 @@ index 00000000..64a69c0a
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..f2e586e9
+index 00000000..a2a22de8
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1175 @@
+@@ -0,0 +1,1208 @@
 +package cli
 +
 +import (
@@ -2370,11 +2389,12 @@ index 00000000..f2e586e9
 +	if err != nil {
 +		t.Fatalf("runReplayEval() error = %v", err)
 +	}
-+	if !slices.Equal(eval.Agents, replayKnownAgents) {
-+		t.Fatalf("agents = %v, want %v", eval.Agents, replayKnownAgents)
++	knownAgents := replayKnownAgents()
++	if !slices.Equal(eval.Agents, knownAgents) {
++		t.Fatalf("agents = %v, want %v", eval.Agents, knownAgents)
 +	}
-+	if len(eval.Runs) != len(replayKnownAgents) {
-+		t.Fatalf("runs = %d, want %d", len(eval.Runs), len(replayKnownAgents))
++	if len(eval.Runs) != len(knownAgents) {
++		t.Fatalf("runs = %d, want %d", len(eval.Runs), len(knownAgents))
 +	}
 +
 +	passed := 0
@@ -2395,8 +2415,8 @@ index 00000000..f2e586e9
 +	if passed != len(replayLaunchableAgents) {
 +		t.Fatalf("passed runs = %d, want %d", passed, len(replayLaunchableAgents))
 +	}
-+	if skipped != len(replayKnownAgents)-len(replayLaunchableAgents) {
-+		t.Fatalf("skipped runs = %d, want %d", skipped, len(replayKnownAgents)-len(replayLaunchableAgents))
++	if skipped != len(knownAgents)-len(replayLaunchableAgents) {
++		t.Fatalf("skipped runs = %d, want %d", skipped, len(knownAgents)-len(replayLaunchableAgents))
 +	}
 +
 +	var out bytes.Buffer
@@ -2409,11 +2429,43 @@ index 00000000..f2e586e9
 +}
 +
 +func TestReplayKnownAgentsMatchesEntireRegistry(t *testing.T) {
-+	got := append([]string(nil), replayKnownAgents...)
-+	slices.Sort(got)
++	got := replayKnownAgents()
++	gotSorted := append([]string(nil), got...)
++	slices.Sort(gotSorted)
 +	want := agentpkg.StringList()
++	if !slices.Equal(gotSorted, want) {
++		t.Fatalf("replayKnownAgents() = %v, want registered Entire coders %v", got, want)
++	}
++	if len(got) < len(replayLaunchableAgents) || !slices.Equal(got[:len(replayLaunchableAgents)], replayLaunchableAgents) {
++		t.Fatalf("replayKnownAgents() = %v, want launchable prefix %v", got, replayLaunchableAgents)
++	}
++	if slices.Contains(got, "vogon") {
++		t.Fatalf("replayKnownAgents() included test-only agent: %v", got)
++	}
++}
++
++func TestOrderReplayAgentsLaunchableFirstThenSorted(t *testing.T) {
++	got := orderReplayAgents([]string{
++		string(agentpkg.AgentNamePi),
++		string(agentpkg.AgentNameCodex),
++		string(agentpkg.AgentNameCursor),
++		string(agentpkg.AgentNameClaudeCode),
++		string(agentpkg.AgentNameGemini),
++		string(agentpkg.AgentNameCopilotCLI),
++		"",
++		replayAgentAll,
++		string(agentpkg.AgentNamePi),
++	})
++	want := []string{
++		string(agentpkg.AgentNameClaudeCode),
++		string(agentpkg.AgentNameCodex),
++		string(agentpkg.AgentNameGemini),
++		string(agentpkg.AgentNameCopilotCLI),
++		string(agentpkg.AgentNameCursor),
++		string(agentpkg.AgentNamePi),
++	}
 +	if !slices.Equal(got, want) {
-+		t.Fatalf("replayKnownAgents = %v, want registered Entire coders %v", got, want)
++		t.Fatalf("orderReplayAgents() = %v, want %v", got, want)
 +	}
 +}
 +

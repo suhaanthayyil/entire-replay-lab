@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.24 - 2026-06-03
+
+- Made `--agent all` derive from Entire's user-facing built-in coder registry
+  at runtime instead of a separate hardcoded Replay Lab list.
+- Kept launchable replay agents first in eval output, then sorted the remaining
+  registered coders.
+- Added tests for registry-derived expansion, launchable-first ordering, and
+  test-only agent exclusion.
+- Added a build lock so concurrent smoke, release, and manual build runs cannot
+  mutate the shared patched CLI checkout at the same time.
+- Refreshed the all-agent fixture, command docs, doctor output, patch artifact,
+  and pinned patch hash.
+
 ## v0.1.23 - 2026-06-03
 
 - Made `--agent all` match Entire's current user-facing built-in coder

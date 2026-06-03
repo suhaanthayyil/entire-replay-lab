@@ -7,6 +7,27 @@ OUT="$ROOT/bin/entire"
 
 mkdir -p "$ROOT/bin" "$ROOT/tmp"
 
+LOCK_DIR="$ROOT/tmp/build-cli.lock"
+LOCK_TIMEOUT_SECONDS="${ENTIRE_BUILD_LOCK_TIMEOUT:-300}"
+LOCK_START="$(date +%s)"
+while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+  if [[ -f "$LOCK_DIR/pid" ]]; then
+    LOCK_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ -n "$LOCK_PID" ]] && ! kill -0 "$LOCK_PID" 2>/dev/null; then
+      rm -rf "$LOCK_DIR"
+      continue
+    fi
+  fi
+  LOCK_NOW="$(date +%s)"
+  if (( LOCK_NOW - LOCK_START >= LOCK_TIMEOUT_SECONDS )); then
+    echo "Timed out waiting for Replay Lab build lock: $LOCK_DIR" >&2
+    exit 1
+  fi
+  sleep 1
+done
+printf '%s\n' "$$" >"$LOCK_DIR/pid"
+trap 'rm -rf "$LOCK_DIR"' EXIT
+
 if [[ -n "${ENTIRE_CLI_SOURCE:-}" && ( -d "$ENTIRE_CLI_SOURCE/.git" || -f "$ENTIRE_CLI_SOURCE/.git" ) ]]; then
   CLI_DIR="$ENTIRE_CLI_SOURCE"
 else
