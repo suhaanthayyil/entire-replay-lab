@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.54 - 2026-06-03
+
+- Added local JSON Schema `uniqueItems` support to the dependency-free example
+  validator.
+- Replay file-list arrays and eval `agents` now reject duplicate entries in the
+  schema contract.
+- Added validator negative checks that mutate unique arrays to contain
+  duplicates so schema regressions fail locally.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.53 - 2026-06-03
 
 - Added local JSON Schema `pattern` support to the dependency-free example

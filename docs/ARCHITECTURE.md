@@ -117,6 +117,8 @@ Replay Lab is intentionally diagnostic:
 - required replay/eval identity strings are schema-checked as non-blank, so
   blank IDs, agents, checkpoint IDs, prompts, or commit anchors fail local
   validation instead of passing as present-but-useless strings
+- selected agents and file-list evidence are schema-checked as unique where
+  duplicate entries would make report comparison noisier without adding facts
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value
 - diff-inspection failures are saved as replay warnings while `changed_files`

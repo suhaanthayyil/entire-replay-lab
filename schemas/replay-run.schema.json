@@ -57,6 +57,7 @@
     },
     "changed_files": {
       "type": "array",
+      "uniqueItems": true,
       "items": {
         "type": "string"
       }
@@ -132,6 +133,7 @@
         },
         "files_touched": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "type": "string"
           }
@@ -209,18 +211,21 @@
         },
         "missing_files": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "type": "string"
           }
         },
         "extra_files": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "type": "string"
           }
         },
         "risky_files": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "type": "string"
           }

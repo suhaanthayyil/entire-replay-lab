@@ -170,12 +170,23 @@ def validate(
                     raise ValidationError(f"{path}.{key}: property schema must be an object")
                 validate(schema, child, value[key], f"{path}.{key}", schema_path, cache)
 
-    if isinstance(value, list) and "items" in rule:
-        item_rule = rule["items"]
-        if not isinstance(item_rule, dict):
-            raise ValidationError(f"{path}: items schema must be an object")
-        for index, item in enumerate(value):
-            validate(schema, item_rule, item, f"{path}[{index}]", schema_path, cache)
+    if isinstance(value, list):
+        if rule.get("uniqueItems") is True:
+            seen: dict[str, int] = {}
+            for index, item in enumerate(value):
+                key = json.dumps(item, sort_keys=True, separators=(",", ":"))
+                if key in seen:
+                    raise ValidationError(
+                        f"{path}: expected unique array items; duplicate at "
+                        f"indexes {seen[key]} and {index}"
+                    )
+                seen[key] = index
+        if "items" in rule:
+            item_rule = rule["items"]
+            if not isinstance(item_rule, dict):
+                raise ValidationError(f"{path}: items schema must be an object")
+            for index, item in enumerate(value):
+                validate(schema, item_rule, item, f"{path}[{index}]", schema_path, cache)
 
 
 def display_path(path: Path) -> str:
@@ -312,6 +323,122 @@ def validate_rejects_invalid_required_strings(
             continue
         raise ValidationError(
             f"{example_name}: schema accepted invalid required string {case_path}"
+        )
+
+
+def duplicate_first_string(values: Any) -> list[str] | None:
+    if not isinstance(values, list) or not values:
+        return None
+    first = values[0]
+    if not isinstance(first, str):
+        return None
+    return [first, first, *values[1:]]
+
+
+def validate_rejects_duplicate_unique_arrays(
+    example_path: Path,
+    schema_path: Path,
+    require_nested_examples: bool,
+) -> None:
+    schema_path = schema_path.resolve()
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+
+    cases: list[tuple[str, dict[str, Any]]] = []
+
+    def add_case(case_path: str, mutated_case: dict[str, Any]) -> None:
+        cases.append((case_path, mutated_case))
+
+    def add_metric_cases(root: dict[str, Any], prefix: str) -> None:
+        metrics = root.get("metrics")
+        if not isinstance(metrics, dict):
+            return
+        for key in ("missing_files", "extra_files", "risky_files"):
+            duplicated = duplicate_first_string(metrics.get(key))
+            if duplicated is None:
+                continue
+            mutated_case = deepcopy(example)
+            target: dict[str, Any] = mutated_case
+            if prefix:
+                for part in prefix.split("."):
+                    if part.endswith("]"):
+                        name, raw_index = part[:-1].split("[", 1)
+                        target = target[name][int(raw_index)]
+                    else:
+                        target = target[part]
+            target["metrics"][key] = duplicated
+            add_case(f"{prefix + '.' if prefix else ''}metrics.{key}", mutated_case)
+
+    if schema_path.name == "replay-run.schema.json":
+        duplicated = duplicate_first_string(example.get("changed_files"))
+        if duplicated is not None:
+            mutated = deepcopy(example)
+            mutated["changed_files"] = duplicated
+            add_case("changed_files", mutated)
+
+        if require_nested_examples:
+            spec = example.get("spec")
+            if not isinstance(spec, dict):
+                raise ValidationError(f"{example_name}.spec: expected object")
+            duplicated = duplicate_first_string(spec.get("files_touched"))
+            if duplicated is not None:
+                mutated = deepcopy(example)
+                mutated["spec"]["files_touched"] = duplicated
+                add_case("spec.files_touched", mutated)
+        add_metric_cases(example, "")
+
+    if require_nested_examples and schema_path.name == "eval-run.schema.json":
+        duplicated = duplicate_first_string(example.get("agents"))
+        if duplicated is not None:
+            mutated = deepcopy(example)
+            mutated["agents"] = duplicated
+            add_case("agents", mutated)
+
+        runs = example.get("runs")
+        if isinstance(runs, list):
+            for index, run in enumerate(runs):
+                if not isinstance(run, dict):
+                    continue
+                duplicated = duplicate_first_string(run.get("changed_files"))
+                if duplicated is not None:
+                    mutated = deepcopy(example)
+                    mutated["runs"][index]["changed_files"] = duplicated
+                    add_case(f"runs[{index}].changed_files", mutated)
+                spec = run.get("spec")
+                if isinstance(spec, dict):
+                    duplicated = duplicate_first_string(spec.get("files_touched"))
+                    if duplicated is not None:
+                        mutated = deepcopy(example)
+                        mutated["runs"][index]["spec"]["files_touched"] = duplicated
+                        add_case(f"runs[{index}].spec.files_touched", mutated)
+                add_metric_cases(run, f"runs[{index}]")
+
+    for case_path, mutated_case in cases:
+        cache = {schema_path: schema}
+        try:
+            validate(
+                schema,
+                schema,
+                mutated_case,
+                f"{example_name}#duplicate-{case_path}",
+                schema_path,
+                cache,
+            )
+        except ValidationError as exc:
+            if "expected unique array items" not in str(exc):
+                raise ValidationError(
+                    f"{example_name}: duplicate array check for {case_path} failed "
+                    f"with unexpected error: {exc}"
+                ) from exc
+            continue
+        raise ValidationError(
+            f"{example_name}: schema accepted duplicate array item in {case_path}"
         )
 
 
@@ -618,6 +745,7 @@ def main() -> int:
             validate_path(example, schema)
             validate_rejects_extra_field(example, schema)
             validate_rejects_invalid_required_strings(example, schema, require_nested_examples)
+            validate_rejects_duplicate_unique_arrays(example, schema, require_nested_examples)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
             validate_rejects_stale_eval_summary(example, schema)
