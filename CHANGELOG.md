@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.23 - 2026-06-03
+
+- Made `--agent all` match Entire's current user-facing built-in coder
+  registry.
+- Removed the internal test-only coder from normal eval expansion and docs.
+- Added a regression test that fails if Replay Lab's all-agent list drifts from
+  Entire's registered coder list.
+- Refreshed the Replay Lab patch and pinned patch hash.
+
 ## v0.1.22 - 2026-06-03
 
 - Added the all-agent eval fixture to GitHub Actions CI.

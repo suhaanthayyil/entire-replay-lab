@@ -299,7 +299,7 @@ Useful flags:
 
 `--agent all` expands to the built-in Entire coder list: `claude-code`,
 `codex`, `gemini`, `cursor`, `copilot-cli`, `opencode`, `factoryai-droid`,
-`pi`, and `vogon`. Claude Code, Codex, and Gemini run locally today. The other
+and `pi`. Claude Code, Codex, and Gemini run locally today. The other
 coder integrations are included as skipped rows until a replay launcher exists.
 Common aliases are accepted for convenience: `gemini-cli`, `cursor-cli`, and
 `copilot`.

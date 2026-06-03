@@ -66,7 +66,7 @@ optional_cmd codex "Codex replays will be unavailable"
 optional_cmd gemini "Gemini CLI replays will be unavailable"
 optional_cmd entire-sem "semantic similarity will be unavailable"
 info "native replay launchers: claude-code, codex, gemini"
-info "eval --agent all also reports cursor, copilot-cli, opencode, factoryai-droid, pi, and vogon as skipped until launchers exist"
+info "eval --agent all also reports cursor, copilot-cli, opencode, factoryai-droid, and pi as skipped until launchers exist"
 
 if [[ -x "$ENTIRE_BIN" ]]; then
   ok "Replay Lab binary found: $ENTIRE_BIN"

@@ -125,7 +125,6 @@ expected_agents = [
     "opencode",
     "factoryai-droid",
     "pi",
-    "vogon",
 ]
 
 if data.get("agents") != expected_agents:
@@ -172,7 +171,7 @@ REPORT_TEXT="$WORKDIR/eval-report.txt"
   "$ENTIRE_BIN" eval report "$EVAL_ID" >"$REPORT_TEXT"
 )
 
-for agent_name in claude-code codex gemini cursor copilot-cli opencode factoryai-droid pi vogon; do
+for agent_name in claude-code codex gemini cursor copilot-cli opencode factoryai-droid pi; do
   if ! grep -Fq "$agent_name" "$REPORT_TEXT"; then
     echo "Rendered eval report is missing $agent_name" >&2
     exit 1

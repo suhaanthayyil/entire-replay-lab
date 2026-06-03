@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..f8fce6d0
+index 00000000..64a69c0a
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1836 @@
+@@ -0,0 +1,1834 @@
 +package cli
 +
 +import (
@@ -217,7 +217,6 @@ index 00000000..f8fce6d0
 +	replayAgentCopilotAlias       = "copilot"
 +	replayAgentCursorCLI          = "cursor-cli"
 +	replayAgentGeminiCLI          = "gemini-cli"
-+	replayAgentVogon              = "vogon"
 +	replayInspectionTimeout       = 2 * time.Minute
 +	replayRenderedOutputLineLimit = 20
 +	replayResultDiffLimit         = 256 * 1024
@@ -239,7 +238,6 @@ index 00000000..f8fce6d0
 +	string(agent.AgentNameOpenCode),
 +	string(agent.AgentNameFactoryAIDroid),
 +	string(agent.AgentNamePi),
-+	replayAgentVogon,
 +}
 +
 +var replayLaunchableAgents = []string{
@@ -1875,10 +1873,10 @@ index 00000000..f8fce6d0
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..255c2d08
+index 00000000..f2e586e9
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1166 @@
+@@ -0,0 +1,1175 @@
 +package cli
 +
 +import (
@@ -2407,6 +2405,15 @@ index 00000000..255c2d08
 +	}
 +	if strings.Contains(out.String(), `"changed_files": null`) || strings.Contains(out.String(), `"files_touched": null`) {
 +		t.Fatalf("all-agent eval JSON contains null arrays:\n%s", out.String())
++	}
++}
++
++func TestReplayKnownAgentsMatchesEntireRegistry(t *testing.T) {
++	got := append([]string(nil), replayKnownAgents...)
++	slices.Sort(got)
++	want := agentpkg.StringList()
++	if !slices.Equal(got, want) {
++		t.Fatalf("replayKnownAgents = %v, want registered Entire coders %v", got, want)
 +	}
 +}
 +
