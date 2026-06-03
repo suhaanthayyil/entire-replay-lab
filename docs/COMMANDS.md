@@ -113,7 +113,8 @@ patched CLI build, command surface checks, report fixtures, and patch tests.
 ### `./scripts/validate-examples.py`
 
 Validates example JSON payloads against the local schema files, including local
-cross-schema references. It can also validate explicit JSON/schema pairs.
+cross-schema references and eval summary consistency. It can also validate
+explicit JSON/schema pairs.
 
 ```bash
 python3 ./scripts/validate-examples.py
@@ -244,6 +245,9 @@ Useful flags:
 - `--json`
 - `--timeout <duration>`
 
+`replay checkpoint` runs exactly one launchable agent. Use `eval run
+--agent all` when you want coverage across every built-in Entire coder.
+
 ### `entire replay report`
 
 Render a saved replay run.
@@ -261,7 +265,7 @@ Run multiple checkpoint replays and rank agents.
 ./bin/entire eval run \
   --from-checkpoints \
   --limit 3 \
-  --agent claude-code,codex \
+  --agent all \
   --test-cmd "<repo test command>"
 ```
 
@@ -270,12 +274,19 @@ Useful flags:
 - `--checkpoint <id>` repeatable
 - `--from-checkpoints`
 - `--limit <n>`
-- `--agent <agents>`
+- `--agent <agents>` or `--agent all`
 - `--model <model>`
 - `--test-cmd <command>`
 - `--keep-worktree`
 - `--json`
 - `--timeout <duration>`
+
+`--agent all` expands to the built-in Entire coder list: `claude-code`,
+`codex`, `gemini`, `cursor`, `copilot-cli`, `opencode`, `factoryai-droid`,
+`pi`, and `vogon`. Claude Code, Codex, and Gemini run locally today. The other
+coder integrations are included as skipped rows until a replay launcher exists.
+Common aliases are accepted for convenience: `gemini-cli`, `cursor-cli`, and
+`copilot`.
 
 ### `entire eval report`
 

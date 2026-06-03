@@ -22,7 +22,7 @@ entire checkpoint list
 "$ENTIRE_BIN" eval run \\
   --from-checkpoints \\
   --limit 3 \\
-  --agent claude-code,codex \\
+  --agent all \\
   --test-cmd "$TEST_CMD"
 
 # Reopen saved reports.

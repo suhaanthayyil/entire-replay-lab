@@ -63,9 +63,9 @@ if eval_run.get("id") != "evl_a12c0f44":
     raise SystemExit("eval report JSON returned the wrong id")
 if eval_run.get("schema_version") != 1:
     raise SystemExit("eval report JSON returned the wrong schema_version")
-if [summary.get("agent") for summary in eval_run.get("summaries", [])] != ["claude-code", "codex"]:
+if [summary.get("agent") for summary in eval_run.get("summaries", [])] != ["claude-code", "codex", "cursor"]:
     raise SystemExit("eval report JSON returned unexpected summaries")
-if len(eval_run.get("runs", [])) != 2:
+if len(eval_run.get("runs", [])) != 3:
     raise SystemExit("eval report JSON did not preserve embedded replay runs")
 first_run = eval_run["runs"][0]
 if first_run.get("id") != "rpl_7a1d4c9e":

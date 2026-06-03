@@ -50,6 +50,8 @@ for flag in --checkpoint --from-checkpoints --limit --agent --model --test-cmd -
   require_help_contains "eval run flag" "$flag" eval run
 done
 
+require_help_contains "replay checkpoint launchable agents" "Agent to replay with: claude-code, codex, gemini" replay checkpoint
+require_help_contains "eval run all-agent shortcut" "use all for every built-in Entire coder" eval run
 require_help_contains "eval report json flag" "--json" eval report
 
 echo "OK Replay/Eval command surface is available in $ENTIRE_BIN."

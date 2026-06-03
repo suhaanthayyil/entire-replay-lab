@@ -17,7 +17,8 @@ python3 ./scripts/validate-examples.py
 
 The validator is intentionally dependency-free and supports the JSON Schema
 features used by this repo, including `additionalProperties: false` for the
-checked example payloads and local cross-schema `$ref` links.
+checked example payloads, local cross-schema `$ref` links, and eval summary
+totals derived from embedded replay runs.
 
 ## ReplayRun
 
@@ -106,6 +107,10 @@ checked example payloads and local cross-schema `$ref` links.
 ```
 
 `ReplayEvalRun.runs[]` uses the same schema contract as a saved `ReplayRun`.
+Example eval summaries are also checked against the embedded runs so stale
+counts, rates, averages, risk scores, durations, or token totals fail
+validation. When `--agent all` is used, `agents` may include every built-in
+Entire coder; non-launchable integrations appear as skipped runs.
 
 ## Stability Rules
 

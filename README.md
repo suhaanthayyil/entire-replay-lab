@@ -87,7 +87,7 @@ Run a small private eval over recent checkpoints:
 /path/to/entire-replay-lab/bin/entire eval run \
   --from-checkpoints \
   --limit 3 \
-  --agent claude-code,codex \
+  --agent all \
   --test-cmd "python3 -m pytest"
 ```
 

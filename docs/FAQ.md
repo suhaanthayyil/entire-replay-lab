@@ -29,8 +29,11 @@ duration, and token usage when available. Semantic similarity is skipped.
 
 ## Do I need Claude Code?
 
-Only for Claude replays. The prototype also has launchers for Codex and Gemini
-CLI. `./scripts/doctor.sh` shows which launchable agents are available on your
+Only for Claude replays. The prototype has native replay launchers for Claude
+Code, Codex, and Gemini. `entire eval run --agent all` also represents the full
+built-in Entire coder list: Cursor, Copilot CLI, OpenCode, FactoryAI Droid, Pi,
+and Vogon are reported as skipped until they expose replay launchers.
+`./scripts/doctor.sh` shows which launchable agents are available on your
 machine.
 
 ## What if a repo has no checkpoints?

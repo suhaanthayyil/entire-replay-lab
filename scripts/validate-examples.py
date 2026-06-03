@@ -208,7 +208,202 @@ def validate_rejects_extra_field(example_path: Path, schema_path: Path) -> None:
     raise ValidationError(f"{example_name}: schema accepted an undocumented extra field")
 
 
-def validate_rejects_eval_run_extra_field(example_path: Path, schema_path: Path) -> None:
+def percent(numerator: int, denominator: int) -> int:
+    if denominator == 0:
+        return 100 if numerator == 0 else 0
+    return numerator * 100 // denominator
+
+
+def required_int(value: dict[str, Any], key: str, path: str) -> int:
+    raw = value.get(key)
+    if not isinstance(raw, int) or isinstance(raw, bool):
+        raise ValidationError(f"{path}.{key}: expected integer, got {type_name(raw)}")
+    return raw
+
+
+def optional_int(value: dict[str, Any], key: str, path: str) -> int:
+    if key not in value:
+        return 0
+    return required_int(value, key, path)
+
+
+def replay_token_inputs(run: dict[str, Any]) -> int:
+    usage = run.get("token_usage")
+    if not isinstance(usage, dict):
+        return 0
+    return (
+        optional_int(usage, "input_tokens", "token_usage")
+        + optional_int(usage, "cache_creation_tokens", "token_usage")
+        + optional_int(usage, "cache_read_tokens", "token_usage")
+    )
+
+
+def replay_token_outputs(run: dict[str, Any]) -> int:
+    usage = run.get("token_usage")
+    if not isinstance(usage, dict):
+        return 0
+    return optional_int(usage, "output_tokens", "token_usage")
+
+
+def validate_optional_summary_int(
+    summary: dict[str, Any],
+    key: str,
+    expected: int,
+    path: str,
+) -> None:
+    if expected == 0 and key not in summary:
+        return
+    actual = required_int(summary, key, path)
+    if actual != expected:
+        raise ValidationError(f"{path}.{key}: expected {expected}, got {actual}")
+
+
+def validate_eval_summary_consistency(
+    example_path: Path,
+    schema_path: Path,
+    require_runs: bool,
+) -> None:
+    if schema_path.resolve().name != "eval-run.schema.json":
+        return
+    example = load_json(example_path)
+    example_name = display_path(example_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+
+    runs = example.get("runs", [])
+    if not isinstance(runs, list):
+        raise ValidationError(f"{example_name}.runs: expected array")
+    if not runs:
+        if require_runs:
+            raise ValidationError(f"{example_name}: eval example must include replay runs")
+        return
+
+    totals: dict[str, dict[str, int]] = {}
+    for index, run in enumerate(runs):
+        if not isinstance(run, dict):
+            raise ValidationError(f"{example_name}.runs[{index}]: expected object")
+        agent_name = run.get("agent")
+        if not isinstance(agent_name, str) or not agent_name.strip():
+            continue
+        total = totals.setdefault(
+            agent_name,
+            {
+                "runs": 0,
+                "passed": 0,
+                "failed": 0,
+                "skipped": 0,
+                "recall": 0,
+                "precision": 0,
+                "semantic_runs": 0,
+                "semantic": 0,
+                "duration_runs": 0,
+                "duration": 0,
+                "risk_score": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+            },
+        )
+        total["runs"] += 1
+        status = run.get("status")
+        if status == "passed":
+            total["passed"] += 1
+        elif status == "skipped":
+            total["skipped"] += 1
+        else:
+            total["failed"] += 1
+
+        metrics = run.get("metrics", {})
+        if not isinstance(metrics, dict):
+            raise ValidationError(f"{example_name}.runs[{index}].metrics: expected object")
+        total["recall"] += required_int(metrics, "file_recall", f"{example_name}.runs[{index}].metrics")
+        total["precision"] += required_int(metrics, "file_precision", f"{example_name}.runs[{index}].metrics")
+        if metrics.get("semantic_available") is True:
+            total["semantic_runs"] += 1
+            total["semantic"] += optional_int(
+                metrics,
+                "semantic_similarity",
+                f"{example_name}.runs[{index}].metrics",
+            )
+
+        duration = optional_int(run, "duration_ms", f"{example_name}.runs[{index}]")
+        if duration > 0:
+            total["duration_runs"] += 1
+            total["duration"] += duration
+        total["risk_score"] += required_int(metrics, "risk_score", f"{example_name}.runs[{index}].metrics")
+        total["input_tokens"] += replay_token_inputs(run)
+        total["output_tokens"] += replay_token_outputs(run)
+
+    summaries = example.get("summaries", [])
+    if not isinstance(summaries, list):
+        raise ValidationError(f"{example_name}.summaries: expected array")
+    by_agent: dict[str, dict[str, Any]] = {}
+    for index, summary in enumerate(summaries):
+        if not isinstance(summary, dict):
+            raise ValidationError(f"{example_name}.summaries[{index}]: expected object")
+        agent_name = summary.get("agent")
+        if not isinstance(agent_name, str):
+            raise ValidationError(f"{example_name}.summaries[{index}].agent: expected string")
+        if agent_name in by_agent:
+            raise ValidationError(f"{example_name}.summaries: duplicate agent {agent_name!r}")
+        by_agent[agent_name] = summary
+
+    if set(by_agent) != set(totals):
+        raise ValidationError(
+            f"{example_name}.summaries: agents {sorted(by_agent)} do not match runs {sorted(totals)}"
+        )
+    declared_agents = example.get("agents", [])
+    if isinstance(declared_agents, list) and set(declared_agents) != set(totals):
+        raise ValidationError(
+            f"{example_name}.agents: agents {sorted(declared_agents)} do not match runs {sorted(totals)}"
+        )
+
+    for agent_name, total in totals.items():
+        summary = by_agent[agent_name]
+        path = f"{example_name}.summaries[{agent_name}]"
+        expected = {
+            "runs": total["runs"],
+            "passed": total["passed"],
+            "failed": total["failed"],
+            "skipped": total["skipped"],
+            "pass_rate": percent(total["passed"], total["runs"]),
+            "avg_file_recall": total["recall"] // total["runs"],
+            "avg_file_precision": total["precision"] // total["runs"],
+            "risk_score": total["risk_score"],
+            "avg_duration_ms": (
+                total["duration"] // total["duration_runs"]
+                if total["duration_runs"] > 0
+                else 0
+            ),
+        }
+        for key, value in expected.items():
+            actual = required_int(summary, key, path)
+            if actual != value:
+                raise ValidationError(f"{path}.{key}: expected {value}, got {actual}")
+        validate_optional_summary_int(
+            summary,
+            "semantic_runs",
+            total["semantic_runs"],
+            path,
+        )
+        validate_optional_summary_int(
+            summary,
+            "avg_semantic_similarity",
+            (
+                total["semantic"] // total["semantic_runs"]
+                if total["semantic_runs"] > 0
+                else 0
+            ),
+            path,
+        )
+        validate_optional_summary_int(summary, "input_tokens", total["input_tokens"], path)
+        validate_optional_summary_int(summary, "output_tokens", total["output_tokens"], path)
+
+
+def validate_rejects_eval_run_extra_field(
+    example_path: Path,
+    schema_path: Path,
+    require_runs: bool,
+) -> None:
     schema_path = schema_path.resolve()
     if schema_path.name != "eval-run.schema.json":
         return
@@ -220,7 +415,9 @@ def validate_rejects_eval_run_extra_field(example_path: Path, schema_path: Path)
         raise ValidationError(f"{example_name}: example root must be an object")
     runs = example.get("runs")
     if not isinstance(runs, list) or not runs or not isinstance(runs[0], dict):
-        raise ValidationError(f"{example_name}: eval example must include a replay run")
+        if require_runs:
+            raise ValidationError(f"{example_name}: eval example must include a replay run")
+        return
     mutated = dict(example)
     mutated_runs = [dict(run) if isinstance(run, dict) else run for run in runs]
     mutated_runs[0]["__unexpected_replay_lab_run_field__"] = True
@@ -237,30 +434,85 @@ def validate_rejects_eval_run_extra_field(example_path: Path, schema_path: Path)
     raise ValidationError(f"{example_name}: schema accepted an undocumented eval run field")
 
 
-def checked_pairs(args: list[str]) -> list[tuple[Path, Path]]:
+def validate_rejects_stale_eval_summary(example_path: Path, schema_path: Path) -> None:
+    if schema_path.resolve().name != "eval-run.schema.json":
+        return
+    example = load_json(example_path)
+    example_name = display_path(example_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    runs = example.get("runs")
+    summaries = example.get("summaries")
+    if not runs or not isinstance(runs, list) or not summaries or not isinstance(summaries, list):
+        return
+    if not isinstance(summaries[0], dict):
+        return
+    mutated = dict(example)
+    mutated_summaries = [dict(summary) if isinstance(summary, dict) else summary for summary in summaries]
+    current = mutated_summaries[0].get("passed", 0)
+    mutated_summaries[0]["passed"] = current + 1 if isinstance(current, int) else 1
+    mutated["summaries"] = mutated_summaries
+
+    with tempfile_json(example_path.name, mutated) as mutated_path:
+        try:
+            validate_eval_summary_consistency(mutated_path, schema_path, require_runs=False)
+        except ValidationError:
+            return
+    raise ValidationError(f"{example_name}: validator accepted a stale eval summary")
+
+
+class tempfile_json:
+    def __init__(self, name: str, value: dict[str, Any]) -> None:
+        self.name = name
+        self.value = value
+        self.path: Path | None = None
+
+    def __enter__(self) -> Path:
+        import tempfile
+
+        handle = tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            prefix=f"{self.name}.",
+            suffix=".json",
+            delete=False,
+        )
+        with handle:
+            json.dump(self.value, handle)
+        self.path = Path(handle.name)
+        return self.path
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        if self.path is not None:
+            self.path.unlink(missing_ok=True)
+
+
+def checked_pairs(args: list[str]) -> list[tuple[Path, Path, bool]]:
     if not args:
         return [
-            (ROOT / "examples/replay-run.json", ROOT / "schemas/replay-run.schema.json"),
-            (ROOT / "examples/eval-run.json", ROOT / "schemas/eval-run.schema.json"),
+            (ROOT / "examples/replay-run.json", ROOT / "schemas/replay-run.schema.json", True),
+            (ROOT / "examples/eval-run.json", ROOT / "schemas/eval-run.schema.json", True),
         ]
-    pairs: list[tuple[Path, Path]] = []
+    pairs: list[tuple[Path, Path, bool]] = []
     remaining = list(args)
     while remaining:
         if len(remaining) < 3 or remaining[0] != "--check":
             raise ValidationError(
                 "usage: validate-examples.py [--check <json> <schema>]..."
             )
-        pairs.append((Path(remaining[1]), Path(remaining[2])))
+        pairs.append((Path(remaining[1]), Path(remaining[2]), False))
         del remaining[:3]
     return pairs
 
 
 def main() -> int:
     try:
-        for example, schema in checked_pairs(sys.argv[1:]):
+        for example, schema, require_nested_examples in checked_pairs(sys.argv[1:]):
             validate_path(example, schema)
             validate_rejects_extra_field(example, schema)
-            validate_rejects_eval_run_extra_field(example, schema)
+            validate_eval_summary_consistency(example, schema, require_nested_examples)
+            validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
+            validate_rejects_stale_eval_summary(example, schema)
     except (OSError, json.JSONDecodeError, ValidationError) as exc:
         print(f"ERROR {exc}", file=sys.stderr)
         return 1

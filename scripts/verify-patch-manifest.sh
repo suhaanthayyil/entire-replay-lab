@@ -73,6 +73,9 @@ PY
 for needle in \
   "func newReplayCmd" \
   "func newEvalCmd" \
+  "replayAgentAll" \
+  "TestReplayEvalAllAgentsExpandsEntireCoderList" \
+  "TestReplayAgentAliasesCanonicalize" \
   "TestRootCommandHasReplayAndEval" \
   "TestRunReplayProcessPreservesTimeoutErrorAndOutput"
 do

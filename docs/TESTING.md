@@ -16,6 +16,8 @@ It checks:
 - JSON examples validate against the local schemas, including rejection of
   undocumented additional fields where the schema is closed.
 - Eval examples validate each embedded replay run against the ReplayRun schema.
+- Eval summaries are checked against their embedded replay runs, including
+  status counts, pass rate, averages, risk, duration, and token totals.
 - Schemas parse successfully.
 - Project metadata, README badges, and MIT license text stay consistent.
 - Main docs exist and include the important setup sections.
@@ -163,7 +165,7 @@ Run a small eval:
 /path/to/entire-replay-lab/bin/entire eval run \
   --from-checkpoints \
   --limit 3 \
-  --agent claude-code,codex \
+  --agent all \
   --test-cmd "python3 -m pytest"
 ```
 
@@ -177,3 +179,5 @@ Run a small eval:
 - `--keep-worktree` prints a path you can inspect.
 - Missing agents or missing `entire-sem` degrade clearly without corrupting the
   repo.
+- `--agent all` covers every built-in Entire coder, with non-launchable
+  integrations shown as skipped.

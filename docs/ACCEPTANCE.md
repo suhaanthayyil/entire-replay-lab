@@ -64,6 +64,7 @@ Proves:
   schema-valid JSON modes
 - eval report schemas validate embedded replay runs with the same ReplayRun
   contract used for standalone replay reports
+- eval summary totals match the embedded replay runs that the report carries
 
 ## Local Machine Is Ready For A Live Replay
 
@@ -130,13 +131,14 @@ Expected:
 /path/to/entire-replay-lab/bin/entire eval run \
   --from-checkpoints \
   --limit 3 \
-  --agent claude-code,codex \
+  --agent all \
   --test-cmd "<repo test command>"
 ```
 
 Expected:
 
 - each selected checkpoint becomes a replay task
+- every built-in Entire coder is represented when `--agent all` is used
 - unsupported or missing agents are skipped clearly
 - agents are ranked by pass rate, file overlap, risk, duration, and tokens when
   available

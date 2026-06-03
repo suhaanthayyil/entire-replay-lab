@@ -5,7 +5,8 @@
   "finished_at": "2026-06-02T17:41:30Z",
   "agents": [
     "claude-code",
-    "codex"
+    "codex",
+    "cursor"
   ],
   "summaries": [
     {
@@ -22,7 +23,7 @@
       "avg_duration_ms": 134000,
       "risk_score": 0,
       "input_tokens": 54000,
-      "output_tokens": 8700
+      "output_tokens": 8500
     },
     {
       "agent": "codex",
@@ -39,6 +40,22 @@
       "risk_score": 3,
       "input_tokens": 35000,
       "output_tokens": 7000
+    },
+    {
+      "agent": "cursor",
+      "runs": 1,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 1,
+      "pass_rate": 0,
+      "avg_file_recall": 0,
+      "avg_file_precision": 0,
+      "avg_semantic_similarity": 0,
+      "semantic_runs": 0,
+      "avg_duration_ms": 0,
+      "risk_score": 0,
+      "input_tokens": 0,
+      "output_tokens": 0
     }
   ],
   "runs": [
@@ -146,6 +163,39 @@
         "api_call_count": 1
       },
       "error": "Replay changed auth config outside the original checkpoint scope."
+    },
+    {
+      "schema_version": 1,
+      "id": "rpl_2c77f0ab",
+      "spec": {
+        "checkpoint_id": "9a91ce5c55f2",
+        "session_id": "019e6ba4",
+        "prompt": "Update validate_token to support issuer checks.",
+        "target_commit": "2f9c481",
+        "base_commit": "a77cd65",
+        "files_touched": [
+          "src/auth.py"
+        ],
+        "original_agent": "codex",
+        "original_model": "gpt-5.5"
+      },
+      "agent": "cursor",
+      "status": "skipped",
+      "started_at": "2026-06-02T17:36:00Z",
+      "finished_at": "2026-06-02T17:36:00Z",
+      "duration_ms": 0,
+      "changed_files": [],
+      "test": {
+        "status": "skipped"
+      },
+      "metrics": {
+        "file_precision": 0,
+        "file_recall": 0,
+        "file_overlap": 0,
+        "risk_score": 0,
+        "semantic_available": false
+      },
+      "error": "agent \"cursor\" is supported by Entire but is not launchable by Replay Lab yet; launchable replay agents: claude-code, codex, gemini"
     }
   ]
 }

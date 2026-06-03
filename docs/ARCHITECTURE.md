@@ -48,11 +48,22 @@ If `files_touched` is missing, the implementation falls back to `git diff
 
 ## Agent Execution
 
-Replay Lab supports launchable local agents:
+Replay Lab can include every built-in Entire coder in eval reports:
 
 - Claude Code
 - Codex
-- Gemini CLI
+- Gemini
+- Cursor
+- Copilot CLI
+- OpenCode
+- FactoryAI Droid
+- Pi
+- Vogon
+
+The current native replay launchers are Claude Code, Codex, and Gemini. The
+other integrations are still supported in eval selection and are reported as
+skipped with a clear message until Entire exposes a replay launch contract for
+them.
 
 Each agent receives only the original user prompt plus a short replay wrapper.
 The wrapper says the task is running in an isolated worktree and should be

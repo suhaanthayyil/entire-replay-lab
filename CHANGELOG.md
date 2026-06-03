@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.20 - 2026-06-03
+
+- Added `--agent all` for eval runs across every built-in Entire coder.
+- Canonicalized common agent aliases such as `gemini-cli`, `cursor-cli`, and
+  `copilot`.
+- Reported non-launchable Entire coder integrations as explicit skipped eval
+  runs instead of hiding them.
+- Validated eval summaries against embedded replay run totals.
+- Kept explicit eval report checks compatible with empty run arrays.
+
 ## v0.1.19 - 2026-06-03
 
 - Validated embedded eval replay runs through the ReplayRun schema.

@@ -49,14 +49,15 @@ Point out:
 /path/to/entire-replay-lab/bin/entire eval run \
   --from-checkpoints \
   --limit 3 \
-  --agent claude-code,codex \
+  --agent all \
   --test-cmd "python3 -m pytest"
 ```
 
 Point out:
 
 - the tasks come from real Entire checkpoints
-- every agent gets the same historical prompt
+- every built-in Entire coder is represented
+- launchable agents get the same historical prompt
 - the report ranks agents on repo-specific performance
 
 ## Saved Reports
