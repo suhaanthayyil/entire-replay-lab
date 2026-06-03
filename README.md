@@ -26,7 +26,8 @@ repo context to a public eval dataset.
 ## What It Does
 
 - Replays a real checkpoint in a temp git worktree at the original base commit.
-- Runs Claude Code, Codex, or Gemini CLI against the original prompt.
+- Runs Claude Code, Codex, Copilot CLI, Cursor Agent CLI, Factory AI Droid,
+  Gemini CLI, or OpenCode against the original prompt when installed locally.
 - Compares the replayed output against the original target commit.
 - Reports file overlap, optional test status, semantic similarity, risky files,
   duration, and token usage when available.

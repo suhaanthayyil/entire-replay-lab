@@ -63,10 +63,14 @@ required_cmd python3
 
 optional_cmd claude "Claude Code replays will be unavailable"
 optional_cmd codex "Codex replays will be unavailable"
+optional_cmd copilot "Copilot CLI replays will be unavailable"
+optional_cmd cursor-agent "Cursor replays will be unavailable"
+optional_cmd droid "Factory AI Droid replays will be unavailable"
 optional_cmd gemini "Gemini CLI replays will be unavailable"
+optional_cmd opencode "OpenCode replays will be unavailable"
 optional_cmd entire-sem "semantic similarity will be unavailable"
-info "native replay launchers: claude-code, codex, gemini"
-info "eval --agent all also reports copilot-cli, cursor, factoryai-droid, opencode, and pi as skipped until launchers exist"
+info "native replay launchers: claude-code, codex, copilot-cli, cursor, factoryai-droid, gemini, opencode"
+info "eval --agent all also reports pi as skipped until Pi exposes a safe non-interactive launch contract"
 
 if [[ -x "$ENTIRE_BIN" ]]; then
   ok "Replay Lab binary found: $ENTIRE_BIN"

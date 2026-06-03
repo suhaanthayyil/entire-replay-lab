@@ -110,7 +110,8 @@ totals derived from embedded replay runs.
 Example eval summaries are also checked against the embedded runs so stale
 counts, rates, averages, risk scores, durations, or token totals fail
 validation. When `--agent all` is used, `agents` may include every built-in
-Entire coder; non-launchable integrations appear as skipped runs.
+Entire coder. Pi appears as a skipped run until a safe non-interactive launch
+contract exists.
 
 ## Stability Rules
 

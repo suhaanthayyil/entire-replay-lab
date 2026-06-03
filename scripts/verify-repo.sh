@@ -156,6 +156,8 @@ require_contains "all-agent eval command fixture" "$ROOT/scripts/check-all-agent
 require_contains "Replay/Eval command surface" "$ROOT/scripts/check-command-surface.sh"
 require_contains "Replay/Eval report fixture" "$ROOT/scripts/check-report-fixtures.sh"
 require_contains "Replay Lab Doctor" "$ROOT/scripts/doctor.sh"
+require_contains "cursor-agent" "$ROOT/scripts/doctor.sh"
+require_contains "Pi exposes a safe non-interactive launch contract" "$ROOT/scripts/doctor.sh"
 require_contains "Release check" "$ROOT/scripts/release-check.sh"
 require_contains "ENTIRE_CLI_DEFAULT_REF" "$ROOT/scripts/replay-lab-env.sh"
 require_contains "ENTIRE_REPLAY_DEFAULT_PATCH_SHA256" "$ROOT/scripts/replay-lab-env.sh"

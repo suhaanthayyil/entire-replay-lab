@@ -191,5 +191,5 @@ Run a small eval:
 - `--keep-worktree` prints a path you can inspect.
 - Missing agents or missing `entire-sem` degrade clearly without corrupting the
   repo.
-- `--agent all` covers every built-in Entire coder, with non-launchable
-  integrations shown as skipped.
+- `--agent all` covers every built-in Entire coder, with Pi shown as skipped
+  until a safe non-interactive launch contract exists.

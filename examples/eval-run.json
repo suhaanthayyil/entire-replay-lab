@@ -6,7 +6,7 @@
   "agents": [
     "claude-code",
     "codex",
-    "cursor"
+    "pi"
   ],
   "summaries": [
     {
@@ -42,7 +42,7 @@
       "output_tokens": 7000
     },
     {
-      "agent": "cursor",
+      "agent": "pi",
       "runs": 1,
       "passed": 0,
       "failed": 0,
@@ -179,7 +179,7 @@
         "original_agent": "codex",
         "original_model": "gpt-5.5"
       },
-      "agent": "cursor",
+      "agent": "pi",
       "status": "skipped",
       "started_at": "2026-06-02T17:36:00Z",
       "finished_at": "2026-06-02T17:36:00Z",
@@ -195,7 +195,7 @@
         "risk_score": 0,
         "semantic_available": false
       },
-      "error": "agent \"cursor\" is supported by Entire but is not launchable by Replay Lab yet; launchable replay agents: claude-code, codex, gemini"
+      "error": "agent \"pi\" is supported by Entire but is not launchable by Replay Lab yet; launchable replay agents: claude-code, codex, copilot-cli, cursor, factoryai-droid, gemini, opencode"
     }
   ]
 }

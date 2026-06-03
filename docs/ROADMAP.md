@@ -7,7 +7,8 @@
 - `entire eval run`
 - `entire eval report <run-id>`
 - isolated git worktrees
-- Claude Code, Codex, and Gemini CLI launchers
+- Claude Code, Codex, Copilot CLI, Cursor Agent CLI, Factory AI Droid,
+  Gemini CLI, and OpenCode launchers
 - file overlap, tests, risk, duration, tokens, and optional semantic metrics
 - JSON reports under `.git/entire-replay/`
 

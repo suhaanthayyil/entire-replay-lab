@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.27 - 2026-06-03
+
+- Added native replay runners for Copilot CLI, Cursor Agent CLI, Factory AI
+  Droid, and OpenCode using their documented non-interactive CLI modes.
+- Expanded the launchable `--agent all` prefix to every currently launchable
+  Entire coder: Claude Code, Codex, Copilot CLI, Cursor, Factory AI Droid,
+  Gemini, and OpenCode.
+- Kept Pi represented in `--agent all` as a skipped eval row until Pi exposes a
+  safe non-interactive launch contract.
+- Updated all-agent fixtures, doctor checks, docs, examples, the patch artifact,
+  and the pinned patch hash.
+
 ## v0.1.26 - 2026-06-03
 
 - Extended `scripts/check-build-lock.sh` to verify stale lock cleanup and

@@ -119,10 +119,10 @@ data = json.loads(path.read_text(encoding="utf-8"))
 expected_agents = [
     "claude-code",
     "codex",
-    "gemini",
     "copilot-cli",
     "cursor",
     "factoryai-droid",
+    "gemini",
     "opencode",
     "pi",
 ]
@@ -138,7 +138,15 @@ by_agent = {run.get("agent"): run for run in runs}
 if set(by_agent) != set(expected_agents):
     raise SystemExit(f"run agents mismatch: {sorted(by_agent)!r}")
 
-launchable = {"claude-code", "codex", "gemini"}
+launchable = {
+    "claude-code",
+    "codex",
+    "copilot-cli",
+    "cursor",
+    "factoryai-droid",
+    "gemini",
+    "opencode",
+}
 session_only = set(expected_agents) - launchable
 for agent_name in expected_agents:
     run = by_agent[agent_name]
@@ -171,7 +179,7 @@ REPORT_TEXT="$WORKDIR/eval-report.txt"
   "$ENTIRE_BIN" eval report "$EVAL_ID" >"$REPORT_TEXT"
 )
 
-for agent_name in claude-code codex gemini copilot-cli cursor factoryai-droid opencode pi; do
+for agent_name in claude-code codex copilot-cli cursor factoryai-droid gemini opencode pi; do
   if ! grep -Fq "$agent_name" "$REPORT_TEXT"; then
     echo "Rendered eval report is missing $agent_name" >&2
     exit 1

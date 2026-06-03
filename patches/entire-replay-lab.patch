@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..ec9072b5
+index 00000000..98e4a0e2
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1853 @@
+@@ -0,0 +1,1908 @@
 +package cli
 +
 +import (
@@ -232,7 +232,11 @@ index 00000000..ec9072b5
 +var replayLaunchableAgents = []string{
 +	string(agent.AgentNameClaudeCode),
 +	string(agent.AgentNameCodex),
++	string(agent.AgentNameCopilotCLI),
++	string(agent.AgentNameCursor),
++	string(agent.AgentNameFactoryAIDroid),
 +	string(agent.AgentNameGemini),
++	string(agent.AgentNameOpenCode),
 +}
 +
 +func replayKnownAgents() []string {
@@ -671,8 +675,16 @@ index 00000000..ec9072b5
 +		return &replayRunnerFunc{name: agentName, fn: runClaudeReplay}
 +	case string(agent.AgentNameCodex):
 +		return &replayRunnerFunc{name: agentName, fn: runCodexReplay}
++	case string(agent.AgentNameCopilotCLI):
++		return &replayRunnerFunc{name: agentName, fn: runCopilotReplay}
++	case string(agent.AgentNameCursor):
++		return &replayRunnerFunc{name: agentName, fn: runCursorReplay}
++	case string(agent.AgentNameFactoryAIDroid):
++		return &replayRunnerFunc{name: agentName, fn: runDroidReplay}
 +	case string(agent.AgentNameGemini), replayAgentGeminiCLI:
 +		return &replayRunnerFunc{name: string(agent.AgentNameGemini), fn: runGeminiReplay}
++	case string(agent.AgentNameOpenCode):
++		return &replayRunnerFunc{name: agentName, fn: runOpenCodeReplay}
 +	default:
 +		return nil
 +	}
@@ -705,8 +717,16 @@ index 00000000..ec9072b5
 +		return "claude"
 +	case string(agent.AgentNameCodex):
 +		return string(agent.AgentNameCodex)
++	case string(agent.AgentNameCopilotCLI):
++		return "copilot"
++	case string(agent.AgentNameCursor):
++		return "cursor-agent"
++	case string(agent.AgentNameFactoryAIDroid):
++		return "droid"
 +	case string(agent.AgentNameGemini), replayAgentGeminiCLI:
 +		return string(agent.AgentNameGemini)
++	case string(agent.AgentNameOpenCode):
++		return string(agent.AgentNameOpenCode)
 +	default:
 +		return ""
 +	}
@@ -768,12 +788,47 @@ index 00000000..ec9072b5
 +	return runReplayProcess(ctx, req.WorktreePath, string(agent.AgentNameCodex), args, strings.NewReader(req.Prompt))
 +}
 +
++func runCopilotReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	args := []string{"--prompt", req.Prompt, "--output-format", "json", "--allow-all-tools", "--add-dir", ".", "--no-ask-user"}
++	if req.Model != "" {
++		args = append(args, "--model", req.Model)
++	}
++	return runReplayProcess(ctx, req.WorktreePath, "copilot", args, nil)
++}
++
++func runCursorReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	args := []string{"--print", "--output-format", "stream-json"}
++	if req.Model != "" {
++		args = append(args, "--model", req.Model)
++	}
++	args = append(args, req.Prompt)
++	return runReplayProcess(ctx, req.WorktreePath, "cursor-agent", args, nil)
++}
++
++func runDroidReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	args := []string{"exec", "--auto", "low", "--output-format", "stream-json"}
++	if req.Model != "" {
++		args = append(args, "--model", req.Model)
++	}
++	args = append(args, req.Prompt)
++	return runReplayProcess(ctx, req.WorktreePath, "droid", args, nil)
++}
++
 +func runGeminiReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
 +	args := []string{"-p", " "}
 +	if req.Model != "" {
 +		args = append(args, "--model", req.Model)
 +	}
 +	return runReplayProcess(ctx, req.WorktreePath, string(agent.AgentNameGemini), args, strings.NewReader(req.Prompt))
++}
++
++func runOpenCodeReplay(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++	args := []string{"run", "--format", "json"}
++	if req.Model != "" {
++		args = append(args, "--model", req.Model)
++	}
++	args = append(args, req.Prompt)
++	return runReplayProcess(ctx, req.WorktreePath, string(agent.AgentNameOpenCode), args, nil)
 +}
 +
 +func runReplayProcess(ctx context.Context, dir, name string, args []string, stdin io.Reader) (ReplayRunnerResult, error) {
@@ -1892,10 +1947,10 @@ index 00000000..ec9072b5
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..a2a22de8
+index 00000000..5742373b
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1208 @@
+@@ -0,0 +1,1237 @@
 +package cli
 +
 +import (
@@ -2365,17 +2420,15 @@ index 00000000..a2a22de8
 +	restoreRunner := replayRunnerFor
 +	replayRunnerFor = func(agentName string) *replayRunnerFunc {
 +		agentName = canonicalReplayAgentName(agentName)
-+		switch agentName {
-+		case string(agentpkg.AgentNameClaudeCode), string(agentpkg.AgentNameCodex), string(agentpkg.AgentNameGemini):
++		if slices.Contains(replayLaunchableAgents, agentName) {
 +			return &replayRunnerFunc{name: agentName, fn: func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
 +				if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
 +					return ReplayRunnerResult{}, err
 +				}
 +				return ReplayRunnerResult{Output: "fake replay completed"}, nil
 +			}}
-+		default:
-+			return nil
 +		}
++		return nil
 +	}
 +	defer func() { replayRunnerFor = restoreRunner }()
 +	restoreCommand := replayCommandForAgent
@@ -2450,7 +2503,9 @@ index 00000000..a2a22de8
 +		string(agentpkg.AgentNameCodex),
 +		string(agentpkg.AgentNameCursor),
 +		string(agentpkg.AgentNameClaudeCode),
++		string(agentpkg.AgentNameFactoryAIDroid),
 +		string(agentpkg.AgentNameGemini),
++		string(agentpkg.AgentNameOpenCode),
 +		string(agentpkg.AgentNameCopilotCLI),
 +		"",
 +		replayAgentAll,
@@ -2459,13 +2514,42 @@ index 00000000..a2a22de8
 +	want := []string{
 +		string(agentpkg.AgentNameClaudeCode),
 +		string(agentpkg.AgentNameCodex),
-+		string(agentpkg.AgentNameGemini),
 +		string(agentpkg.AgentNameCopilotCLI),
 +		string(agentpkg.AgentNameCursor),
++		string(agentpkg.AgentNameFactoryAIDroid),
++		string(agentpkg.AgentNameGemini),
++		string(agentpkg.AgentNameOpenCode),
 +		string(agentpkg.AgentNamePi),
 +	}
 +	if !slices.Equal(got, want) {
 +		t.Fatalf("orderReplayAgents() = %v, want %v", got, want)
++	}
++}
++
++func TestReplayLaunchableAgentsCoverDocumentedEntireCoders(t *testing.T) {
++	launchable := map[string]string{}
++	for _, agentName := range replayLaunchableAgents {
++		launchable[agentName] = defaultReplayCommandForAgent(agentName)
++	}
++	wantCommands := map[string]string{
++		string(agentpkg.AgentNameClaudeCode):     "claude",
++		string(agentpkg.AgentNameCodex):          "codex",
++		string(agentpkg.AgentNameCopilotCLI):     "copilot",
++		string(agentpkg.AgentNameCursor):         "cursor-agent",
++		string(agentpkg.AgentNameFactoryAIDroid): "droid",
++		string(agentpkg.AgentNameGemini):         "gemini",
++		string(agentpkg.AgentNameOpenCode):       "opencode",
++	}
++	for agentName, command := range wantCommands {
++		if got := launchable[agentName]; got != command {
++			t.Fatalf("launchable command for %s = %q, want %q; launchable=%v", agentName, got, command, replayLaunchableAgents)
++		}
++		if runner := defaultReplayRunnerFor(agentName); runner == nil {
++			t.Fatalf("defaultReplayRunnerFor(%q) = nil", agentName)
++		}
++	}
++	if got := defaultReplayRunnerFor(string(agentpkg.AgentNamePi)); got != nil {
++		t.Fatalf("Pi runner = %+v, want nil until Pi exposes a stable non-interactive launch contract", got)
 +	}
 +}
 +

@@ -58,12 +58,11 @@ Replay Lab can include every built-in Entire coder in eval reports:
 - OpenCode
 - FactoryAI Droid
 - Pi
-- Vogon
 
-The current native replay launchers are Claude Code, Codex, and Gemini. The
-other integrations are still supported in eval selection and are reported as
-skipped with a clear message until Entire exposes a replay launch contract for
-them.
+The current native replay launchers are Claude Code, Codex, Copilot CLI, Cursor
+Agent CLI, Factory AI Droid, Gemini CLI, and OpenCode. Pi is still supported in
+eval selection and is reported as skipped with a clear message until Pi exposes
+a safe non-interactive launch contract.
 
 Each agent receives only the original user prompt plus a short replay wrapper.
 The wrapper says the task is running in an isolated worktree and should be

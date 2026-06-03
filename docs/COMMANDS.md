@@ -312,10 +312,11 @@ Useful flags:
 - `--timeout <duration>`
 
 `--agent all` expands from Entire's user-facing built-in coder registry. Today
-that is `claude-code`, `codex`, `gemini`, `copilot-cli`, `cursor`,
-`factoryai-droid`, `opencode`, and `pi`. Claude Code, Codex, and Gemini run
-locally today. The other
-coder integrations are included as skipped rows until a replay launcher exists.
+that is `claude-code`, `codex`, `copilot-cli`, `cursor`, `factoryai-droid`,
+`gemini`, `opencode`, and `pi`. Replay Lab can launch Claude Code, Codex,
+Copilot CLI, Cursor Agent CLI, Factory AI Droid, Gemini CLI, and OpenCode when
+their local binaries are installed and authenticated. Pi stays in the eval as a
+skipped row until Pi exposes a safe non-interactive launch contract.
 Common aliases are accepted for convenience: `gemini-cli`, `cursor-cli`, and
 `copilot`.
 
