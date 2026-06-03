@@ -221,6 +221,8 @@ Run a small eval:
   statuses and preserve the original values in warnings.
 - Legacy reports with sparse test objects still render with `test.status` set
   to `skipped`.
+- Legacy reports with missing top-level IDs still render with IDs recovered from
+  their report filenames.
 - Worktree setup failures after checkpoint resolution still save a failed report
   with a skipped test status and stable empty changed-file array.
 - Diff-inspection failures still save a report warning and stable empty

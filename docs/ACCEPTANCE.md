@@ -77,6 +77,8 @@ Proves:
   defaults while preserving the original values in warnings
 - report readers normalize missing legacy test statuses to `skipped` before
   JSON output
+- report readers recover missing top-level replay/eval report IDs from the
+  report filename before JSON output
 - replay agents and optional test commands each receive their own `--timeout`
   budget, so a slow successful agent does not shorten the test timeout window
 - worktree setup failures after checkpoint resolution still save a failed replay

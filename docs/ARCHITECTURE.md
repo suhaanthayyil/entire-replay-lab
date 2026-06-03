@@ -110,6 +110,8 @@ Replay Lab is intentionally diagnostic:
   schema-valid defaults and keep the original status strings in warnings
 - legacy reports with missing test statuses are normalized to skipped tests
   before rendering JSON
+- legacy replay/eval reports with missing top-level IDs recover those IDs from
+  the report filename
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value
 - diff-inspection failures are saved as replay warnings while `changed_files`

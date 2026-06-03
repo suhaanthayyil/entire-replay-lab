@@ -131,6 +131,8 @@ contract exists.
   warnings.
 - Report readers normalize missing legacy `test.status` values to `skipped`
   before JSON output.
+- Report readers recover missing top-level replay/eval `id` values from the
+  report filename before JSON output.
 - `changed_files` remains an array, including when diff inspection fails and a
   warning is recorded.
 - Report readers normalize legacy null required arrays such as `files_touched`,

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.50 - 2026-06-03
+
+- Recovered missing top-level replay report IDs from the report filename when
+  reading legacy replay reports.
+- Recovered missing top-level eval report IDs from the report filename when
+  reading legacy eval reports.
+- Strengthened Go coverage proving recovered IDs are preserved in JSON output.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.49 - 2026-06-03
 
 - Normalized unknown non-empty replay statuses to `failed` and unknown test

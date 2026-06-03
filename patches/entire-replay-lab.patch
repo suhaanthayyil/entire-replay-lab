@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..44410ded
+index 00000000..276b7149
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,2167 @@
+@@ -0,0 +1,2173 @@
 +package cli
 +
 +import (
@@ -1352,6 +1352,9 @@ index 00000000..44410ded
 +	if err := json.Unmarshal(data, &run); err != nil {
 +		return nil, fmt.Errorf("parse replay report: %w", err)
 +	}
++	if strings.TrimSpace(run.ID) == "" {
++		run.ID = name
++	}
 +	normalizeReplayRunForJSON(&run)
 +	run.ResultPath = path
 +	return &run, nil
@@ -1382,6 +1385,9 @@ index 00000000..44410ded
 +	var run ReplayEvalRun
 +	if err := json.Unmarshal(data, &run); err != nil {
 +		return nil, fmt.Errorf("parse eval report: %w", err)
++	}
++	if strings.TrimSpace(run.ID) == "" {
++		run.ID = name
 +	}
 +	normalizeReplayEvalForJSON(&run)
 +	run.ResultPath = path
@@ -2206,10 +2212,10 @@ index 00000000..44410ded
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..cdf10cf9
+index 00000000..cb78c754
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,2446 @@
+@@ -0,0 +1,2533 @@
 +package cli
 +
 +import (
@@ -2925,6 +2931,58 @@ index 00000000..cdf10cf9
 +	}
 +}
 +
++func TestReadReplayRunRecoversLegacyMissingIDFromFilename(t *testing.T) {
++	_, _, _, _ = newReplayRepo(t)
++	dir, err := replayRunsDir(context.Background())
++	if err != nil {
++		t.Fatalf("replayRunsDir() error = %v", err)
++	}
++	if err := os.MkdirAll(dir, 0o750); err != nil {
++		t.Fatalf("mkdir replay runs dir: %v", err)
++	}
++	reportPath := filepath.Join(dir, "legacy-missing-id.json")
++	if err := os.WriteFile(reportPath, []byte(`{
++  "schema_version": 1,
++  "spec": {
++    "checkpoint_id": "a1b2c3d4e5f6",
++    "prompt": "Do work",
++    "target_commit": "target",
++    "base_commit": "base",
++    "files_touched": []
++  },
++  "agent": "fake-agent",
++  "status": "failed",
++  "changed_files": [],
++  "test": {
++    "status": "skipped"
++  },
++  "metrics": {
++    "file_precision": 0,
++    "file_recall": 0,
++    "file_overlap": 0,
++    "risk_score": 0,
++    "semantic_available": false
++  }
++}`), 0o600); err != nil {
++		t.Fatalf("write legacy replay report: %v", err)
++	}
++
++	loaded, err := readReplayRun(context.Background(), "legacy-missing-id")
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if loaded.ID != "legacy-missing-id" {
++		t.Fatalf("ID = %q, want filename stem", loaded.ID)
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, loaded); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	if !strings.Contains(out.String(), `"id": "legacy-missing-id"`) {
++		t.Fatalf("legacy replay report JSON omitted recovered id:\n%s", out.String())
++	}
++}
++
 +func TestReadReplayRunNormalizesLegacyMissingTestStatus(t *testing.T) {
 +	_, _, _, _ = newReplayRepo(t)
 +	dir, err := replayRunsDir(context.Background())
@@ -3311,6 +3369,41 @@ index 00000000..cdf10cf9
 +	}
 +	if strings.Contains(out.String(), `"status": ""`) {
 +		t.Fatalf("legacy eval report JSON contains empty status:\n%s", out.String())
++	}
++}
++
++func TestReadReplayEvalRecoversLegacyMissingIDFromFilename(t *testing.T) {
++	_, _, _, _ = newReplayRepo(t)
++	dir, err := replayEvalsDir(context.Background())
++	if err != nil {
++		t.Fatalf("replayEvalsDir() error = %v", err)
++	}
++	if err := os.MkdirAll(dir, 0o750); err != nil {
++		t.Fatalf("mkdir replay evals dir: %v", err)
++	}
++	reportPath := filepath.Join(dir, "legacy-eval-missing-id.json")
++	if err := os.WriteFile(reportPath, []byte(`{
++  "schema_version": 1,
++  "agents": ["fake-agent"],
++  "summaries": [],
++  "runs": []
++}`), 0o600); err != nil {
++		t.Fatalf("write legacy eval report: %v", err)
++	}
++
++	loaded, err := readReplayEval(context.Background(), "legacy-eval-missing-id")
++	if err != nil {
++		t.Fatalf("readReplayEval() error = %v", err)
++	}
++	if loaded.ID != "legacy-eval-missing-id" {
++		t.Fatalf("ID = %q, want filename stem", loaded.ID)
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, loaded); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	if !strings.Contains(out.String(), `"id": "legacy-eval-missing-id"`) {
++		t.Fatalf("legacy eval report JSON omitted recovered id:\n%s", out.String())
 +	}
 +}
 +
