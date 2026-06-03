@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..39b76ae8
+index 00000000..77063279
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1925 @@
+@@ -0,0 +1,1958 @@
 +package cli
 +
 +import (
@@ -1040,15 +1040,41 @@ index 00000000..39b76ae8
 +}
 +
 +func replayChangedFilesAndDiff(ctx context.Context, worktree, baseCommit string) ([]string, string, error) {
-+	if _, err := replayGit(ctx, worktree, "add", "-N", "."); err != nil {
++	indexPath, err := replayGit(ctx, worktree, "rev-parse", "--git-path", "index")
++	if err != nil {
++		return nil, "", fmt.Errorf("resolve replay index: %w", err)
++	}
++	if !filepath.IsAbs(indexPath) {
++		indexPath = filepath.Join(worktree, indexPath)
++	}
++	indexData, err := os.ReadFile(indexPath) //nolint:gosec // index path is resolved by git for this worktree
++	if err != nil {
++		return nil, "", fmt.Errorf("read replay index: %w", err)
++	}
++	tmpIndex, err := os.CreateTemp("", "entire-replay-index-*")
++	if err != nil {
++		return nil, "", fmt.Errorf("create replay temp index: %w", err)
++	}
++	tmpIndexPath := tmpIndex.Name()
++	if closeErr := tmpIndex.Close(); closeErr != nil {
++		_ = os.Remove(tmpIndexPath)
++		return nil, "", fmt.Errorf("close replay temp index: %w", closeErr)
++	}
++	defer os.Remove(tmpIndexPath)
++	if err := os.WriteFile(tmpIndexPath, indexData, 0o600); err != nil {
++		return nil, "", fmt.Errorf("copy replay index: %w", err)
++	}
++
++	indexEnv := []string{"GIT_INDEX_FILE=" + tmpIndexPath}
++	if _, err := replayGitWithEnv(ctx, worktree, indexEnv, "add", "-N", "."); err != nil {
 +		return nil, "", fmt.Errorf("index replay untracked files: %w", err)
 +	}
-+	modified, err := replayGit(ctx, worktree, "diff", "--name-only", baseCommit)
++	modified, err := replayGitWithEnv(ctx, worktree, indexEnv, "diff", "--name-only", baseCommit)
 +	if err != nil {
 +		return nil, "", err
 +	}
 +	files := normalizeReplayPaths(strings.Fields(modified))
-+	diff, err := replayGit(ctx, worktree, "diff", "--binary", baseCommit)
++	diff, err := replayGitWithEnv(ctx, worktree, indexEnv, "diff", "--binary", baseCommit)
 +	if err != nil {
 +		return files, "", err
 +	}
@@ -1847,7 +1873,14 @@ index 00000000..39b76ae8
 +}
 +
 +func replayGit(ctx context.Context, repoRoot string, args ...string) (string, error) {
++	return replayGitWithEnv(ctx, repoRoot, nil, args...)
++}
++
++func replayGitWithEnv(ctx context.Context, repoRoot string, env []string, args ...string) (string, error) {
 +	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", repoRoot}, args...)...)
++	if len(env) > 0 {
++		cmd.Env = append(os.Environ(), env...)
++	}
 +	var stderr bytes.Buffer
 +	cmd.Stderr = &stderr
 +	out, err := cmd.Output()
@@ -1964,10 +1997,10 @@ index 00000000..39b76ae8
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..9f55a83c
+index 00000000..edb23b29
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1294 @@
+@@ -0,0 +1,1332 @@
 +package cli
 +
 +import (
@@ -2131,6 +2164,44 @@ index 00000000..9f55a83c
 +	}
 +	if _, err := os.Stat(run.WorktreePath); err != nil {
 +		t.Fatalf("kept worktree missing: %v", err)
++	}
++	t.Cleanup(func() {
++		if err := removeReplayWorktree(context.Background(), repoRoot, run.WorktreePath); err != nil {
++			t.Errorf("remove replay worktree: %v", err)
++		}
++	})
++}
++
++func TestReplayCheckpointDiffUsesTemporaryIndexForKeptWorktree(t *testing.T) {
++	repoRoot, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, "notes.txt"), []byte("new replay note\n"), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "created notes"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:        fakeReplayAgent,
++		KeepWorktree: true,
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if !slices.Contains(run.ChangedFiles, "notes.txt") {
++		t.Fatalf("ChangedFiles = %v, want notes.txt", run.ChangedFiles)
++	}
++	if !strings.Contains(run.Diff, "+new replay note") {
++		t.Fatalf("Diff missing untracked file content:\n%s", run.Diff)
++	}
++
++	status := replayGitForTest(t, run.WorktreePath, "status", "--porcelain=v1")
++	if strings.Contains(status, " A notes.txt") {
++		t.Fatalf("kept worktree has intent-to-add index state:\n%s", status)
++	}
++	if !strings.Contains(status, "?? notes.txt") {
++		t.Fatalf("kept worktree status = %q, want untracked notes.txt", status)
 +	}
 +	t.Cleanup(func() {
 +		if err := removeReplayWorktree(context.Background(), repoRoot, run.WorktreePath); err != nil {

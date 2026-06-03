@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.34 - 2026-06-03
+
+- Hardened replay diff collection to use a temporary git index, so untracked
+  replay output is still captured without leaving intent-to-add state in kept
+  replay worktrees.
+- Added Go coverage proving kept replay worktrees show untracked files
+  naturally after diff collection.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.33 - 2026-06-03
 
 - Hardened replay/eval timeout handling so explicit non-positive `--timeout`

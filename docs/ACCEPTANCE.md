@@ -67,6 +67,8 @@ Proves:
   discovery instead of expanding to every checkpoint
 - explicit `--timeout 0s` values fail before agent lookup or checkpoint
   discovery instead of disabling the replay timeout
+- replay diff collection sees untracked agent output without leaving
+  intent-to-add index state behind in kept replay worktrees
 - patch refresh reproduces the checked-in patch from the normal dirty patched
   CLI checkout without mutating that checkout's git status
 - saved replay/eval reports can be rendered from result JSON in text and
