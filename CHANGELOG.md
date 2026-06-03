@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.39 - 2026-06-03
+
+- Split replay timeout handling into independent setup, agent, and test-command
+  budgets so a slow-but-successful agent does not steal the test command's
+  timeout window.
+- Added focused Go coverage proving `--timeout` applies separately to the agent
+  replay step and the optional test command.
+- Updated command, acceptance, architecture, testing, and reproducibility docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.38 - 2026-06-03
 
 - Preserved the replay worktree path in saved reports when automatic cleanup

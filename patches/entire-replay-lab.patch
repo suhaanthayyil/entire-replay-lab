@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..a83da08a
+index 00000000..2be3e6f4
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1997 @@
+@@ -0,0 +1,2004 @@
 +package cli
 +
 +import (
@@ -407,6 +407,13 @@ index 00000000..a83da08a
 +	return nil
 +}
 +
++func replayContextWithTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
++	if timeout > 0 {
++		return context.WithTimeout(ctx, timeout)
++	}
++	return ctx, func() {}
++}
++
 +func runReplayCheckpoint(ctx context.Context, checkpointRef string, opts replayCheckpointOptions) (*ReplayRun, error) {
 +	opts.Agent = canonicalReplayAgentName(opts.Agent)
 +	if err := validateReplayAgentAvailable(opts.Agent); err != nil {
@@ -614,12 +621,6 @@ index 00000000..a83da08a
 +	if runner == nil {
 +		return nil, fmt.Errorf("agent %q is not launchable for replay yet", opts.Agent)
 +	}
-+	runCtx := ctx
-+	cancel := func() {}
-+	if opts.Timeout > 0 {
-+		runCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
-+	}
-+	defer cancel()
 +
 +	run := &ReplayRun{
 +		SchemaVersion: replaySchemaVersion,
@@ -632,18 +633,22 @@ index 00000000..a83da08a
 +		Test:          ReplayTestRun{Status: replayTestStatusSkipped},
 +	}
 +
-+	worktree, err := createReplayWorktree(runCtx, repoRoot, spec.BaseCommit)
++	setupCtx, setupCancel := replayContextWithTimeout(ctx, opts.Timeout)
++	worktree, err := createReplayWorktree(setupCtx, repoRoot, spec.BaseCommit)
++	setupCancel()
 +	if err != nil {
 +		return nil, err
 +	}
 +
-+	result, runnerErr := runner.Run(runCtx, ReplayRunnerRequest{
++	agentCtx, agentCancel := replayContextWithTimeout(ctx, opts.Timeout)
++	result, runnerErr := runner.Run(agentCtx, ReplayRunnerRequest{
 +		Spec:         spec,
 +		Agent:        runner.Name(),
 +		Model:        opts.Model,
 +		Prompt:       replayPrompt(spec),
 +		WorktreePath: worktree,
 +	})
++	agentCancel()
 +	run.Output, run.OutputTruncated = truncateReplayOutput(result.Output)
 +	run.TokenUsage = result.TokenUsage
 +	run.Warnings = append(run.Warnings, result.Warnings...)
@@ -667,7 +672,9 @@ index 00000000..a83da08a
 +
 +	if opts.TestCommand != "" {
 +		if runnerErr == nil {
-+			run.Test = runReplayTestCommand(runCtx, worktree, opts.TestCommand)
++			testCtx, testCancel := replayContextWithTimeout(ctx, opts.Timeout)
++			run.Test = runReplayTestCommand(testCtx, worktree, opts.TestCommand)
++			testCancel()
 +			if run.Test.Status == replayStatusFailed && run.Status == replayStatusPassed {
 +				run.Status = replayStatusFailed
 +			}
@@ -2036,10 +2043,10 @@ index 00000000..a83da08a
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..6ad2e06f
+index 00000000..0794fecc
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1497 @@
+@@ -0,0 +1,1531 @@
 +package cli
 +
 +import (
@@ -3180,6 +3187,40 @@ index 00000000..6ad2e06f
 +	}
 +	if !strings.Contains(result.Error, "test command timed out") || !strings.Contains(result.Error, context.DeadlineExceeded.Error()) {
 +		t.Fatalf("Error = %q, want timeout cause", result.Error)
++	}
++}
++
++func TestReplayCheckpointTimeoutBudgetAppliesSeparatelyToAgentAndTest(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(ctx context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		select {
++		case <-time.After(800 * time.Millisecond):
++		case <-ctx.Done():
++			return ReplayRunnerResult{Output: "agent timed out early"}, ctx.Err()
++		}
++		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++			return ReplayRunnerResult{}, err
++		}
++		return ReplayRunnerResult{Output: "agent completed after delay"}, nil
++	})
++	defer restore()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:       fakeReplayAgent,
++		TestCommand: "sleep 0.5; printf test-finished",
++		Timeout:     time.Second,
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.Status != replayStatusPassed {
++		t.Fatalf("Status = %q, error = %s, test = %+v", run.Status, run.Error, run.Test)
++	}
++	if run.Test.Status != replayStatusPassed {
++		t.Fatalf("test status = %q, error = %q, output = %q", run.Test.Status, run.Test.Error, run.Test.Output)
++	}
++	if !strings.Contains(run.Test.Output, "test-finished") {
++		t.Fatalf("test output = %q, want test-finished", run.Test.Output)
 +	}
 +}
 +

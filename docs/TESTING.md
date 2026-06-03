@@ -83,7 +83,8 @@ the README, demo, smoke, and release docs. It also verifies invalid replay
 agent selections fail with clear messages, and that non-positive
 `--from-checkpoints --limit` and `--timeout` values fail before checkpoint
 discovery or agent launch. Timed-out test commands preserve partial test output
-and a structured timeout error in saved reports.
+and a structured timeout error in saved reports. Replay agents and optional test
+commands each receive a fresh `--timeout` budget.
 
 To verify saved report rendering:
 
@@ -212,6 +213,8 @@ Run a small eval:
 - Output includes status, range, file metrics, tests, optional semantic score,
   risk, and saved report path.
 - Saved JSON lands under `.git/entire-replay/`.
+- `--timeout` applies independently to the replay agent and optional test
+  command rather than using one shared wall-clock budget.
 - `--keep-worktree` prints a path you can inspect without Replay Lab leaving
   intent-to-add index state behind.
 - Cleanup failures still save the surviving replay worktree path with the

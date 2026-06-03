@@ -292,6 +292,10 @@ Useful flags:
 - `--json`
 - `--timeout <duration>`
 
+The timeout budget applies separately to worktree setup, the replay agent, and
+the optional test command. A slow successful agent does not shorten the test
+command's timeout window.
+
 `replay checkpoint` runs exactly one launchable agent. Use `eval run
 --agent all` when you want coverage across every built-in Entire coder.
 
@@ -327,6 +331,9 @@ Useful flags:
 - `--keep-worktree`
 - `--json`
 - `--timeout <duration>`
+
+Each replay in an eval gives worktree setup, the selected agent, and the
+optional test command independent timeout budgets.
 
 `--agent all` expands from Entire's user-facing built-in coder registry. Today
 that is `claude-code`, `codex`, `copilot-cli`, `cursor`, `factoryai-droid`,

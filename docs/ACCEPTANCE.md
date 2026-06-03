@@ -69,6 +69,8 @@ Proves:
   discovery instead of disabling the replay timeout
 - timed-out test commands preserve partial test output and a structured
   timeout error in saved reports
+- replay agents and optional test commands each receive their own `--timeout`
+  budget, so a slow successful agent does not shorten the test timeout window
 - replay diff collection sees untracked agent output without leaving
   intent-to-add index state behind in kept replay worktrees
 - cleanup failures preserve the leaked replay worktree path and warning in the

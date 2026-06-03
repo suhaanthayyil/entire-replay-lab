@@ -100,6 +100,8 @@ Replay Lab is intentionally diagnostic:
   agent so summaries remain agent-complete
 - agent failures still save partial output and changed files when possible
 - agent and test-command timeouts preserve the timeout cause and partial output
+- setup, agent, and test-command steps receive independent timeout contexts
+  derived from the command `--timeout` value
 - diff collection uses a temporary git index so kept replay worktrees remain
   natural to inspect, with untracked files still shown as untracked
 - semantic scoring uses a temporary git index and unreachable comparison commit,
