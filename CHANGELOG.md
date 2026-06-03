@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.47 - 2026-06-03
+
+- Normalized missing or empty `test.status` values to `skipped` when reading or
+  printing replay reports.
+- Applied the same normalization to replay runs embedded in eval reports.
+- Strengthened Go coverage for standalone replay reports, eval reports, and
+  direct JSON rendering with sparse legacy test objects.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.46 - 2026-06-03
 
 - Preserved requested `test.command` values on skipped test rows when replay

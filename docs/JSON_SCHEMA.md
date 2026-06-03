@@ -124,6 +124,8 @@ contract exists.
   or timeout cause.
 - Skipped test rows may still include `test.command` when a command was
   requested but an earlier replay failure prevented execution.
+- Report readers normalize missing legacy `test.status` values to `skipped`
+  before JSON output.
 - `changed_files` remains an array, including when diff inspection fails and a
   warning is recorded.
 - Report readers normalize legacy null required arrays such as `files_touched`,
