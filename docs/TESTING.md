@@ -83,6 +83,17 @@ This seeds the example result JSON into a temporary git repo and runs
 The generated `--json` output is validated against the local schemas.
 The eval report fixture also proves embedded replay runs stay schema-valid.
 
+To verify `--agent all` at the command level without live model calls:
+
+```bash
+./scripts/build-cli.sh
+./scripts/check-all-agent-eval.sh
+```
+
+This creates a temporary repo with a committed Entire checkpoint, runs
+`entire eval run --agent all --json`, validates the generated eval JSON, and
+confirms the rendered report lists every built-in Entire coder.
+
 After publishing a release, verify release docs, local tags, and GitHub releases:
 
 ```bash

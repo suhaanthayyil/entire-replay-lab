@@ -69,6 +69,20 @@ built Replay Lab binary can render both text and schema-valid `--json` reports.
 ./scripts/check-report-fixtures.sh
 ```
 
+### `./scripts/check-all-agent-eval.sh`
+
+Creates a temporary git repo with a real committed Entire checkpoint, runs the
+built Replay Lab binary with `entire eval run --agent all --json`, validates the
+generated JSON against the eval schema, and confirms the rendered report lists
+every built-in Entire coder. Live agent binaries are hidden from `PATH` during
+the eval, so this proves expansion and skipped-run behavior without spending
+model calls.
+
+```bash
+./scripts/build-cli.sh
+./scripts/check-all-agent-eval.sh
+```
+
 ### `./scripts/doctor.sh [repo]`
 
 Checks local tools, launchable agents, the built Replay Lab binary, and
@@ -85,6 +99,7 @@ Runs the main proof path:
 - repo verification
 - patched CLI build
 - Replay/Eval command-surface checks
+- all-agent eval fixture
 - doctor checks
 - fresh-clone patch tests
 
@@ -104,7 +119,8 @@ not run the replay itself.
 ### `./scripts/release-check.sh`
 
 Runs the release-ready proof path: repo validators, reproducibility checks,
-patched CLI build, command surface checks, report fixtures, and patch tests.
+patched CLI build, command surface checks, report fixtures, the all-agent eval
+fixture, and patch tests.
 
 ```bash
 ./scripts/release-check.sh

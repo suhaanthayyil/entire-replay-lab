@@ -55,6 +55,10 @@ echo "== Release check: report fixtures =="
 "$ROOT/scripts/check-report-fixtures.sh"
 
 echo
+echo "== Release check: all-agent eval fixture =="
+"$ROOT/scripts/check-all-agent-eval.sh"
+
+echo
 echo "== Release check: patch tests =="
 "$ROOT/scripts/check-patch.sh"
 

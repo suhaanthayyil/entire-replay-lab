@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..ec3cb244
+index 00000000..f8fce6d0
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1830 @@
+@@ -0,0 +1,1836 @@
 +package cli
 +
 +import (
@@ -417,8 +417,10 @@ index 00000000..ec3cb244
 +				StartedAt:     now,
 +				FinishedAt:    now,
 +				Error:         err.Error(),
-+				Spec:          ReplaySpec{CheckpointID: cp},
++				Spec:          ReplaySpec{CheckpointID: cp, FilesTouched: []string{}},
++				ChangedFiles:  []string{},
 +				Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++				Metrics:       ReplayMetrics{},
 +			})
 +			continue
 +		}
@@ -434,7 +436,9 @@ index 00000000..ec3cb244
 +					Status:        replayStatusSkipped,
 +					StartedAt:     now,
 +					FinishedAt:    now,
++					ChangedFiles:  []string{},
 +					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Metrics:       ReplayMetrics{},
 +					Error:         err.Error(),
 +				})
 +				continue
@@ -458,7 +462,9 @@ index 00000000..ec3cb244
 +					Status:        replayStatusFailed,
 +					StartedAt:     now,
 +					FinishedAt:    now,
++					ChangedFiles:  []string{},
 +					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Metrics:       ReplayMetrics{},
 +					Error:         err.Error(),
 +				}
 +			}
@@ -1869,10 +1875,10 @@ index 00000000..ec3cb244
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..109ec400
+index 00000000..255c2d08
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1120 @@
+@@ -0,0 +1,1166 @@
 +package cli
 +
 +import (
@@ -2332,6 +2338,9 @@ index 00000000..109ec400
 +	if !strings.Contains(eval.Runs[0].Error, "unknown replay agent") {
 +		t.Fatalf("error = %q, want unknown replay agent", eval.Runs[0].Error)
 +	}
++	if eval.Runs[0].ChangedFiles == nil {
++		t.Fatal("ChangedFiles is nil, want stable empty JSON array")
++	}
 +}
 +
 +func TestReplayEvalAllAgentsExpandsEntireCoderList(t *testing.T) {
@@ -2391,6 +2400,14 @@ index 00000000..109ec400
 +	if skipped != len(replayKnownAgents)-len(replayLaunchableAgents) {
 +		t.Fatalf("skipped runs = %d, want %d", skipped, len(replayKnownAgents)-len(replayLaunchableAgents))
 +	}
++
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, eval); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	if strings.Contains(out.String(), `"changed_files": null`) || strings.Contains(out.String(), `"files_touched": null`) {
++		t.Fatalf("all-agent eval JSON contains null arrays:\n%s", out.String())
++	}
 +}
 +
 +func TestReplayAgentAliasesCanonicalize(t *testing.T) {
@@ -2418,6 +2435,38 @@ index 00000000..109ec400
 +	}
 +	if !strings.Contains(err.Error(), "only supported for eval runs") {
 +		t.Fatalf("error = %v", err)
++	}
++}
++
++func TestReplayEvalMissingCheckpointUsesStableJSONArrays(t *testing.T) {
++	_, _, _, _ = newReplayRepo(t)
++
++	eval, err := runReplayEval(context.Background(), replayEvalOptions{
++		Checkpoints: []string{"deadbeefcafe"},
++		Agents:      []string{fakeReplayAgent},
++	})
++	if err != nil {
++		t.Fatalf("runReplayEval() error = %v", err)
++	}
++	if len(eval.Runs) != 1 {
++		t.Fatalf("runs = %d, want 1", len(eval.Runs))
++	}
++	run := eval.Runs[0]
++	if run.Status != replayStatusFailed {
++		t.Fatalf("status = %q, want failed", run.Status)
++	}
++	if run.Spec.FilesTouched == nil {
++		t.Fatal("Spec.FilesTouched is nil, want stable empty JSON array")
++	}
++	if run.ChangedFiles == nil {
++		t.Fatal("ChangedFiles is nil, want stable empty JSON array")
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, eval); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	if strings.Contains(out.String(), `"changed_files": null`) || strings.Contains(out.String(), `"files_touched": null`) {
++		t.Fatalf("missing-checkpoint eval JSON contains null arrays:\n%s", out.String())
 +	}
 +}
 +
@@ -2468,6 +2517,9 @@ index 00000000..109ec400
 +	run := eval.Runs[0]
 +	if run.Status != replayStatusSkipped || run.Test.Status != replayTestStatusSkipped {
 +		t.Fatalf("run = %+v, want skipped run and skipped test", run)
++	}
++	if run.ChangedFiles == nil {
++		t.Fatal("ChangedFiles is nil, want stable empty JSON array")
 +	}
 +	if !strings.Contains(run.Error, "requires") || !strings.Contains(run.Error, "missing-agent-command") {
 +		t.Fatalf("error = %q", run.Error)

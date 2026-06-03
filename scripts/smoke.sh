@@ -20,6 +20,10 @@ echo "== Replay Lab smoke: report fixtures =="
 "$ROOT/scripts/check-report-fixtures.sh"
 
 echo
+echo "== Replay Lab smoke: all-agent eval fixture =="
+"$ROOT/scripts/check-all-agent-eval.sh"
+
+echo
 echo "== Replay Lab smoke: doctor =="
 if [[ -n "$TARGET_REPO" ]]; then
   "$ROOT/scripts/doctor.sh" "$TARGET_REPO"

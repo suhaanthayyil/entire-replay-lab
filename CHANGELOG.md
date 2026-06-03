@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.21 - 2026-06-03
+
+- Added a binary-level all-agent eval fixture that runs
+  `entire eval run --agent all --json` against a real temporary Entire
+  checkpoint.
+- Fixed schema stability for synthetic skipped/failed eval runs by emitting
+  empty arrays instead of `null` for replay file lists.
+- Wired the all-agent fixture into smoke, release checks, command docs, and repo
+  verification.
+
 ## v0.1.20 - 2026-06-03
 
 - Added `--agent all` for eval runs across every built-in Entire coder.
