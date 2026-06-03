@@ -93,6 +93,7 @@ for needle in \
   "TestReadReplayRunNormalizesLegacyMissingTestStatus" \
   "TestReadReplayEvalNormalizesLegacyRequiredArrays" \
   "TestReadReplayEvalRecoversLegacyMissingIDFromFilename" \
+  "TestReadReplayEvalRecoversLegacyEmbeddedRunIDs" \
   "TestReadReplayEvalNormalizesLegacyUnknownStatuses" \
   "TestReadReplayEvalNormalizesLegacyMissingRunStatus" \
   "TestReadReplayEvalNormalizesLegacyMissingTestStatus" \

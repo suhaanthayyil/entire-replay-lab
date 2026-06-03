@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.51 - 2026-06-03
+
+- Recovered missing embedded replay run IDs inside eval reports from the eval
+  report ID and original run position.
+- Preserved existing embedded run IDs while filling only missing values.
+- Strengthened Go coverage for eval reports with both missing top-level IDs and
+  missing embedded run IDs.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.50 - 2026-06-03
 
 - Recovered missing top-level replay report IDs from the report filename when

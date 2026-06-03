@@ -112,6 +112,8 @@ Replay Lab is intentionally diagnostic:
   before rendering JSON
 - legacy replay/eval reports with missing top-level IDs recover those IDs from
   the report filename
+- legacy eval reports with missing embedded replay run IDs recover stable IDs
+  from the eval ID and original run position
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value
 - diff-inspection failures are saved as replay warnings while `changed_files`

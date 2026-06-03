@@ -133,6 +133,8 @@ contract exists.
   before JSON output.
 - Report readers recover missing top-level replay/eval `id` values from the
   report filename before JSON output.
+- Eval report readers recover missing embedded replay run `id` values from the
+  eval ID and original run position before JSON output.
 - `changed_files` remains an array, including when diff inspection fails and a
   warning is recorded.
 - Report readers normalize legacy null required arrays such as `files_touched`,

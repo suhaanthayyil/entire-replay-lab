@@ -223,6 +223,8 @@ Run a small eval:
   to `skipped`.
 - Legacy reports with missing top-level IDs still render with IDs recovered from
   their report filenames.
+- Legacy eval reports with missing embedded run IDs still render with stable
+  IDs derived from the eval ID and original run position.
 - Worktree setup failures after checkpoint resolution still save a failed report
   with a skipped test status and stable empty changed-file array.
 - Diff-inspection failures still save a report warning and stable empty

@@ -79,6 +79,8 @@ Proves:
   JSON output
 - report readers recover missing top-level replay/eval report IDs from the
   report filename before JSON output
+- eval report readers recover missing embedded replay run IDs from the eval ID
+  and original run position
 - replay agents and optional test commands each receive their own `--timeout`
   budget, so a slow successful agent does not shorten the test timeout window
 - worktree setup failures after checkpoint resolution still save a failed replay
