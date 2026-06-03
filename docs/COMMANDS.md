@@ -61,6 +61,14 @@ Validates example JSON payloads against the local schema files.
 python3 ./scripts/validate-examples.py
 ```
 
+### `./scripts/validate-release-docs.py`
+
+Validates that `CHANGELOG.md` and `docs/releases/v*.md` stay in sync.
+
+```bash
+python3 ./scripts/validate-release-docs.py
+```
+
 ### `./scripts/verify-reproducibility.sh`
 
 Checks that the pinned upstream CLI repo/ref/patch path are non-empty, shared by

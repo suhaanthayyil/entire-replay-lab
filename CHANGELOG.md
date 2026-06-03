@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.3 - 2026-06-02
+
+- Added automatic validation that changelog versions match release-note files.
+- Removed hardcoded release-note version checks from repository verification.
+
 ## v0.1.2 - 2026-06-02
 
 - Centralized pinned Entire CLI repo/ref/patch defaults in `scripts/replay-lab-env.sh`.

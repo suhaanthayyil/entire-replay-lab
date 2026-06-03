@@ -17,6 +17,7 @@ It checks:
 - Schemas parse successfully.
 - Main docs exist and include the important setup sections.
 - Local Markdown links and anchors resolve.
+- Changelog and release-note files stay in sync.
 - Reproducibility metadata is in sync.
 - Shell scripts pass `bash -n`.
 

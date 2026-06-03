@@ -193,6 +193,7 @@ scripts/
   smoke.sh             Run repo verify, build, doctor, and patch tests
   validate-doc-links.py Validate local Markdown links and anchors
   validate-examples.py Validate example JSON against local schemas
+  validate-release-docs.py Validate changelog and release-note consistency
   verify-reproducibility.sh Check pinned build inputs stay in sync
   verify-repo.sh       Validate docs and JSON examples
 ```

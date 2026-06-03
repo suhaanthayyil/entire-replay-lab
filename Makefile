@@ -1,4 +1,4 @@
-.PHONY: verify validate doc-links reproducibility build demo doctor check-patch smoke release-check clean
+.PHONY: verify validate doc-links release-docs reproducibility build demo doctor check-patch smoke release-check clean
 
 verify:
 	./scripts/verify-repo.sh
@@ -8,6 +8,9 @@ validate:
 
 doc-links:
 	python3 ./scripts/validate-doc-links.py
+
+release-docs:
+	python3 ./scripts/validate-release-docs.py
 
 reproducibility:
 	./scripts/verify-reproducibility.sh

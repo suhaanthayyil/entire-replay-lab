@@ -21,6 +21,8 @@ jobs:
         run: python3 ./scripts/validate-examples.py
       - name: Validate markdown links
         run: python3 ./scripts/validate-doc-links.py
+      - name: Validate release docs
+        run: python3 ./scripts/validate-release-docs.py
       - name: Verify reproducibility metadata
         run: ./scripts/verify-reproducibility.sh
       - name: Shell syntax check

@@ -11,8 +11,8 @@ Run the release check before tagging any prototype release:
 ```
 
 It verifies the repository package, example schemas, patched CLI build,
-Replay/Eval command surface, pinned reproducibility metadata, and fresh-clone
-patch tests without launching a live coding agent.
+Replay/Eval command surface, release-note consistency, pinned reproducibility
+metadata, and fresh-clone patch tests without launching a live coding agent.
 
 ## Before Tagging
 
