@@ -158,10 +158,10 @@ surface checks, report fixtures, the all-agent eval fixture, and patch tests.
 ### `./scripts/validate-examples.py`
 
 Validates example JSON payloads against the local schema files, including local
-cross-schema references, non-blank required identity strings, unique set-like
-arrays, non-blank file-list entries, numeric range bounds, RFC3339 timestamps,
-eval-summary totals, and timestamp ordering. It can also validate explicit
-JSON/schema pairs.
+cross-schema references, closed root and nested objects, non-blank required
+identity strings, unique set-like arrays, non-blank file-list entries, numeric
+range bounds, RFC3339 timestamps, eval-summary totals, and timestamp ordering.
+It can also validate explicit JSON/schema pairs.
 
 ```bash
 python3 ./scripts/validate-examples.py

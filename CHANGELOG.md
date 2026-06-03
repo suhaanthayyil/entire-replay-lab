@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.59 - 2026-06-03
+
+- Added schema-driven negative checks for closed JSON objects using
+  `additionalProperties: false`.
+- Covered nested replay/eval objects such as specs, tests, metrics, token
+  usage, eval summaries, and embedded eval replay runs.
+- Made undocumented nested-field regressions fail locally if schema closure is
+  removed or ignored.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.58 - 2026-06-03
 
 - Added schema-driven negative checks for numeric `minimum` and `maximum`

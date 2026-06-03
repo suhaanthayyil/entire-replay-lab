@@ -19,6 +19,8 @@ Proves:
 
 - docs and examples exist
 - example JSON parses and validates against the local schemas
+- schema validation rejects undocumented fields in closed root and nested
+  report objects
 - schema validation rejects empty or whitespace-only required identity strings
 - schema validation rejects duplicate entries in set-like agent and file arrays
 - schema validation rejects empty or whitespace-only file-list entries

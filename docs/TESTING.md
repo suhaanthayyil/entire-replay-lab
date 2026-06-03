@@ -14,7 +14,7 @@ It checks:
 
 - JSON examples parse successfully.
 - JSON examples validate against the local schemas, including rejection of
-  undocumented additional fields where the schema is closed.
+  undocumented additional fields where root or nested schemas are closed.
 - Required replay/eval identity strings reject empty or whitespace-only values
   through local `minLength` and `pattern` schema checks.
 - Set-like replay/eval arrays reject duplicate values through local
