@@ -30,6 +30,16 @@ slice.
 ./scripts/check-patch.sh
 ```
 
+### `./scripts/check-command-surface.sh`
+
+Checks that the built Replay Lab binary exposes the expected `replay` and `eval`
+commands.
+
+```bash
+./scripts/build-cli.sh
+./scripts/check-command-surface.sh
+```
+
 ### `./scripts/doctor.sh [repo]`
 
 Checks local tools, launchable agents, the built Replay Lab binary, and

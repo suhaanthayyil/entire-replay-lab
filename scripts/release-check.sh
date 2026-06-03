@@ -32,13 +32,7 @@ echo "== Release check: patched CLI build =="
 
 echo
 echo "== Release check: command surface =="
-"$ROOT/bin/entire" replay --help >/dev/null
-"$ROOT/bin/entire" replay checkpoint --help >/dev/null
-"$ROOT/bin/entire" replay report --help >/dev/null
-"$ROOT/bin/entire" eval --help >/dev/null
-"$ROOT/bin/entire" eval run --help >/dev/null
-"$ROOT/bin/entire" eval report --help >/dev/null
-echo "Replay and eval commands are available."
+"$ROOT/scripts/check-command-surface.sh"
 
 echo
 echo "== Release check: patch tests =="

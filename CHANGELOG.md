@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.6 - 2026-06-02
+
+- Added a shared Replay/Eval command-surface verifier and CI gate.
+
 ## v0.1.5 - 2026-06-02
 
 - Added patch manifest validation to catch accidental broad upstream patch changes.

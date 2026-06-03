@@ -31,5 +31,7 @@ jobs:
         run: bash -n scripts/*.sh
       - name: Build patched Entire CLI
         run: ./scripts/build-cli.sh
+      - name: Check Replay/Eval command surface
+        run: ./scripts/check-command-surface.sh
       - name: Check Replay Lab patch tests
         run: ./scripts/check-patch.sh

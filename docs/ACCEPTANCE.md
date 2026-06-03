@@ -45,6 +45,7 @@ Evidence:
 
 ```bash
 ./scripts/build-cli.sh
+./scripts/check-command-surface.sh
 ./bin/entire replay --help
 ./bin/entire eval --help
 ```
@@ -54,6 +55,7 @@ Proves:
 - the patched CLI compiles
 - `entire replay` is registered
 - `entire eval` is registered
+- replay/eval subcommands expose help output
 
 ## Local Machine Is Ready For A Live Replay
 

@@ -51,6 +51,13 @@ To verify the patch file surface:
 ./scripts/verify-patch-manifest.sh
 ```
 
+To verify the built command surface:
+
+```bash
+./scripts/build-cli.sh
+./scripts/check-command-surface.sh
+```
+
 After publishing a release, verify release docs, local tags, and GitHub releases:
 
 ```bash
