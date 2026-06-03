@@ -69,6 +69,8 @@ Proves:
   discovery instead of disabling the replay timeout
 - replay diff collection sees untracked agent output without leaving
   intent-to-add index state behind in kept replay worktrees
+- optional semantic scoring sees staged and untracked replay output without
+  moving replay worktree `HEAD` or changing its real index state
 - patch refresh reproduces the checked-in patch from the normal dirty patched
   CLI checkout without mutating that checkout's git status
 - saved replay/eval reports can be rendered from result JSON in text and

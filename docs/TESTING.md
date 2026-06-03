@@ -210,6 +210,8 @@ Run a small eval:
 - Saved JSON lands under `.git/entire-replay/`.
 - `--keep-worktree` prints a path you can inspect without Replay Lab leaving
   intent-to-add index state behind.
+- Optional semantic scoring preserves kept replay worktree `HEAD` and index
+  state while still seeing staged and untracked replay output.
 - Missing agents or missing `entire-sem` degrade clearly without corrupting the
   repo.
 - `--agent all` covers every built-in Entire coder, with Pi shown as skipped

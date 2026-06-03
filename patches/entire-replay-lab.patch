@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..77063279
+index 00000000..f0ae0484
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1958 @@
+@@ -0,0 +1,1978 @@
 +package cli
 +
 +import (
@@ -1040,32 +1040,12 @@ index 00000000..77063279
 +}
 +
 +func replayChangedFilesAndDiff(ctx context.Context, worktree, baseCommit string) ([]string, string, error) {
-+	indexPath, err := replayGit(ctx, worktree, "rev-parse", "--git-path", "index")
++	indexEnv, cleanupIndex, err := replayTemporaryIndexEnv(ctx, worktree)
 +	if err != nil {
-+		return nil, "", fmt.Errorf("resolve replay index: %w", err)
++		return nil, "", err
 +	}
-+	if !filepath.IsAbs(indexPath) {
-+		indexPath = filepath.Join(worktree, indexPath)
-+	}
-+	indexData, err := os.ReadFile(indexPath) //nolint:gosec // index path is resolved by git for this worktree
-+	if err != nil {
-+		return nil, "", fmt.Errorf("read replay index: %w", err)
-+	}
-+	tmpIndex, err := os.CreateTemp("", "entire-replay-index-*")
-+	if err != nil {
-+		return nil, "", fmt.Errorf("create replay temp index: %w", err)
-+	}
-+	tmpIndexPath := tmpIndex.Name()
-+	if closeErr := tmpIndex.Close(); closeErr != nil {
-+		_ = os.Remove(tmpIndexPath)
-+		return nil, "", fmt.Errorf("close replay temp index: %w", closeErr)
-+	}
-+	defer os.Remove(tmpIndexPath)
-+	if err := os.WriteFile(tmpIndexPath, indexData, 0o600); err != nil {
-+		return nil, "", fmt.Errorf("copy replay index: %w", err)
-+	}
++	defer cleanupIndex()
 +
-+	indexEnv := []string{"GIT_INDEX_FILE=" + tmpIndexPath}
 +	if _, err := replayGitWithEnv(ctx, worktree, indexEnv, "add", "-N", "."); err != nil {
 +		return nil, "", fmt.Errorf("index replay untracked files: %w", err)
 +	}
@@ -1079,6 +1059,38 @@ index 00000000..77063279
 +		return files, "", err
 +	}
 +	return files, diff, nil
++}
++
++func replayTemporaryIndexEnv(ctx context.Context, worktree string) ([]string, func() error, error) {
++	indexPath, err := replayGit(ctx, worktree, "rev-parse", "--git-path", "index")
++	if err != nil {
++		return nil, func() error { return nil }, fmt.Errorf("resolve replay index: %w", err)
++	}
++	if !filepath.IsAbs(indexPath) {
++		indexPath = filepath.Join(worktree, indexPath)
++	}
++	indexData, err := os.ReadFile(indexPath) //nolint:gosec // index path is resolved by git for this worktree
++	if err != nil {
++		return nil, func() error { return nil }, fmt.Errorf("read replay index: %w", err)
++	}
++	tmpIndex, err := os.CreateTemp("", "entire-replay-index-*")
++	if err != nil {
++		return nil, func() error { return nil }, fmt.Errorf("create replay temp index: %w", err)
++	}
++	tmpIndexPath := tmpIndex.Name()
++	if _, err := tmpIndex.Write(indexData); err != nil {
++		_ = tmpIndex.Close()
++		_ = os.Remove(tmpIndexPath)
++		return nil, func() error { return nil }, fmt.Errorf("copy replay index: %w", err)
++	}
++	if err := tmpIndex.Close(); err != nil {
++		_ = os.Remove(tmpIndexPath)
++		return nil, func() error { return nil }, fmt.Errorf("close replay temp index: %w", err)
++	}
++	cleanup := func() error {
++		return os.Remove(tmpIndexPath)
++	}
++	return []string{"GIT_INDEX_FILE=" + tmpIndexPath}, cleanup, nil
 +}
 +
 +func replayFilesChangedBetween(ctx context.Context, repoRoot, baseCommit, targetCommit string) ([]string, error) {
@@ -1170,34 +1182,42 @@ index 00000000..77063279
 +}
 +
 +func commitReplayResultForSemantic(ctx context.Context, worktree string) (string, func() error, error) {
-+	if _, err := replayGit(ctx, worktree, "diff", "--quiet"); err == nil {
-+		head, headErr := replayGit(ctx, worktree, "rev-parse", "HEAD")
-+		if headErr != nil {
-+			return "", func() error { return nil }, headErr
-+		}
-+		return head, func() error { return nil }, nil
-+	}
-+	if _, err := replayGit(ctx, worktree, "add", "-A"); err != nil {
-+		return "", func() error { return nil }, err
-+	}
-+	if _, err := replayGit(ctx, worktree,
-+		"-c", "user.name=Entire Replay",
-+		"-c", "user.email=replay@entire.local",
-+		"commit", "--no-gpg-sign", "-m", "entire replay result",
-+	); err != nil {
-+		return "", func() error { return nil }, err
-+	}
 +	head, err := replayGit(ctx, worktree, "rev-parse", "HEAD")
 +	if err != nil {
 +		return "", func() error { return nil }, err
 +	}
-+	cleanup := func() error {
-+		if _, err := replayGit(context.Background(), worktree, "reset", "--mixed", "HEAD^"); err != nil {
-+			return fmt.Errorf("reset temporary semantic replay commit: %w", err)
-+		}
-+		return nil
++	indexEnv, cleanup, err := replayTemporaryIndexEnv(ctx, worktree)
++	if err != nil {
++		return "", func() error { return nil }, err
 +	}
-+	return head, cleanup, nil
++	fail := func(err error) (string, func() error, error) {
++		_ = cleanup()
++		return "", func() error { return nil }, err
++	}
++	if _, err := replayGitWithEnv(ctx, worktree, indexEnv, "add", "-A", "."); err != nil {
++		return fail(err)
++	}
++	changed, err := replayGitWithEnv(ctx, worktree, indexEnv, "diff", "--cached", "--name-only", "HEAD", "--")
++	if err != nil {
++		return fail(err)
++	}
++	if strings.TrimSpace(changed) == "" {
++		return head, cleanup, nil
++	}
++	tree, err := replayGitWithEnv(ctx, worktree, indexEnv, "write-tree")
++	if err != nil {
++		return fail(err)
++	}
++	replayHead, err := replayGitWithEnv(ctx, worktree, indexEnv,
++		"-c", "user.name=Entire Replay",
++		"-c", "user.email=replay@entire.local",
++		"-c", "commit.gpgSign=false",
++		"commit-tree", tree, "-p", head, "-m", "entire replay result",
++	)
++	if err != nil {
++		return fail(err)
++	}
++	return replayHead, cleanup, nil
 +}
 +
 +func replaySemanticKeys(ctx context.Context, dir, base, head string) (map[string]struct{}, error) {
@@ -1997,10 +2017,10 @@ index 00000000..77063279
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..edb23b29
+index 00000000..ea654abb
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1332 @@
+@@ -0,0 +1,1395 @@
 +package cli
 +
 +import (
@@ -3065,7 +3085,10 @@ index 00000000..edb23b29
 +		t.Fatalf("commitReplayResultForSemantic() error = %v", err)
 +	}
 +	if replayHead == base {
-+		t.Fatal("semantic commit did not advance HEAD")
++		t.Fatal("semantic commit did not include replay changes")
++	}
++	if head := replayGitForTest(t, worktree, "rev-parse", "HEAD"); head != base {
++		t.Fatalf("HEAD changed during semantic scoring = %s, want %s", head, base)
 +	}
 +	if err := cleanup(); err != nil {
 +		t.Fatalf("semantic cleanup: %v", err)
@@ -3077,6 +3100,66 @@ index 00000000..edb23b29
 +	diff := replayGitForTest(t, worktree, "diff", "--", replayFixtureFile)
 +	if !strings.Contains(diff, "replay_helper") {
 +		t.Fatalf("working tree diff lost replay changes:\n%s", diff)
++	}
++}
++
++func TestCommitReplayResultForSemanticUsesTemporaryIndex(t *testing.T) {
++	repoRoot, _, base, _ := newReplayRepo(t)
++	worktree, err := createReplayWorktree(context.Background(), repoRoot, base)
++	if err != nil {
++		t.Fatalf("createReplayWorktree() error = %v", err)
++	}
++	t.Cleanup(func() {
++		if err := removeReplayWorktree(context.Background(), repoRoot, worktree); err != nil {
++			t.Errorf("remove replay worktree: %v", err)
++		}
++	})
++
++	if err := os.WriteFile(filepath.Join(worktree, replayFixtureFile), []byte(replayTargetContent), 0o644); err != nil {
++		t.Fatalf("write replay content: %v", err)
++	}
++	if _, err := replayGit(context.Background(), worktree, "add", replayFixtureFile); err != nil {
++		t.Fatalf("stage replay content: %v", err)
++	}
++	if err := os.WriteFile(filepath.Join(worktree, "notes.txt"), []byte("semantic note\n"), 0o644); err != nil {
++		t.Fatalf("write untracked note: %v", err)
++	}
++
++	beforeHead := replayGitForTest(t, worktree, "rev-parse", "HEAD")
++	beforeStatus := replayGitForTest(t, worktree, "status", "--porcelain=v1")
++	if !strings.Contains(beforeStatus, "M  "+replayFixtureFile) || !strings.Contains(beforeStatus, "?? notes.txt") {
++		t.Fatalf("unexpected precondition status:\n%s", beforeStatus)
++	}
++
++	replayHead, cleanup, err := commitReplayResultForSemantic(context.Background(), worktree)
++	if err != nil {
++		t.Fatalf("commitReplayResultForSemantic() error = %v", err)
++	}
++	if replayHead == base {
++		t.Fatal("semantic commit did not include replay changes")
++	}
++	if head := replayGitForTest(t, worktree, "rev-parse", "HEAD"); head != beforeHead {
++		t.Fatalf("HEAD changed during semantic scoring = %s, want %s", head, beforeHead)
++	}
++	if status := replayGitForTest(t, worktree, "status", "--porcelain=v1"); status != beforeStatus {
++		t.Fatalf("status changed during semantic scoring:\n%s\nwant:\n%s", status, beforeStatus)
++	}
++
++	changed := strings.Fields(replayGitForTest(t, worktree, "diff", "--name-only", base, replayHead, "--"))
++	for _, want := range []string{replayFixtureFile, "notes.txt"} {
++		if !slices.Contains(changed, want) {
++			t.Fatalf("semantic commit changed files = %v, missing %s", changed, want)
++		}
++	}
++
++	if err := cleanup(); err != nil {
++		t.Fatalf("semantic cleanup: %v", err)
++	}
++	if head := replayGitForTest(t, worktree, "rev-parse", "HEAD"); head != beforeHead {
++		t.Fatalf("HEAD after cleanup = %s, want %s", head, beforeHead)
++	}
++	if status := replayGitForTest(t, worktree, "status", "--porcelain=v1"); status != beforeStatus {
++		t.Fatalf("status after cleanup changed:\n%s\nwant:\n%s", status, beforeStatus)
 +	}
 +}
 +

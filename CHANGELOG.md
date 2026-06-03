@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.35 - 2026-06-03
+
+- Hardened optional semantic scoring to build its comparison commit from a
+  copied temporary git index instead of moving and resetting replay worktree
+  `HEAD`.
+- Semantic scoring now includes staged and untracked replay output while
+  preserving the kept worktree's real HEAD and index state exactly.
+- Added focused Go coverage for semantic scratch-index isolation.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.34 - 2026-06-03
 
 - Hardened replay diff collection to use a temporary git index, so untracked

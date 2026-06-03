@@ -100,6 +100,9 @@ Replay Lab is intentionally diagnostic:
 - timeouts preserve the timeout cause and partial output
 - diff collection uses a temporary git index so kept replay worktrees remain
   natural to inspect, with untracked files still shown as untracked
+- semantic scoring uses a temporary git index and unreachable comparison commit,
+  so optional `entire-sem` analysis does not move replay worktree `HEAD` or
+  rewrite the agent's index state
 - large diffs and output are capped and marked as truncated
 - failed reports show concise output with the full data in JSON
 
