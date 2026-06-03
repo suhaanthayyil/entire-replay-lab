@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.8 - 2026-06-03
+
+- Added binary-level Replay/Eval report fixture verification.
+
 ## v0.1.7 - 2026-06-03
 
 - Expanded command-surface verification to require public replay/eval flags.

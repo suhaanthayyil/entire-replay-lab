@@ -61,6 +61,16 @@ To verify the built command surface:
 This checks the replay/eval command tree plus the required public flags used by
 the README, demo, smoke, and release docs.
 
+To verify saved report rendering:
+
+```bash
+./scripts/build-cli.sh
+./scripts/check-report-fixtures.sh
+```
+
+This seeds the example result JSON into a temporary git repo and runs
+`entire replay report` plus `entire eval report` in text and `--json` modes.
+
 After publishing a release, verify release docs, local tags, and GitHub releases:
 
 ```bash

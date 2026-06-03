@@ -1,4 +1,4 @@
-.PHONY: verify validate doc-links release-docs reproducibility patch-manifest command-surface release-state build demo doctor check-patch smoke release-check clean
+.PHONY: verify validate doc-links release-docs reproducibility patch-manifest command-surface report-fixtures release-state build demo doctor check-patch smoke release-check clean
 
 verify:
 	./scripts/verify-repo.sh
@@ -20,6 +20,9 @@ patch-manifest:
 
 command-surface:
 	./scripts/check-command-surface.sh
+
+report-fixtures:
+	./scripts/check-report-fixtures.sh
 
 release-state:
 	./scripts/verify-release-state.sh

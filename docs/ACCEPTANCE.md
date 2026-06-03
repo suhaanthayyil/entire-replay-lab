@@ -46,6 +46,7 @@ Evidence:
 ```bash
 ./scripts/build-cli.sh
 ./scripts/check-command-surface.sh
+./scripts/check-report-fixtures.sh
 ./bin/entire replay --help
 ./bin/entire eval --help
 ```
@@ -59,6 +60,8 @@ Proves:
 - required replay/eval flags such as `--agent`, `--test-cmd`,
   `--keep-worktree`, `--checkpoint`, `--from-checkpoints`, and `--json` are
   present
+- saved replay/eval reports can be rendered from result JSON in text and JSON
+  modes
 
 ## Local Machine Is Ready For A Live Replay
 
@@ -89,6 +92,7 @@ Proves the full local happy path:
 - repository verification
 - patched CLI build
 - command-surface checks
+- saved report fixture checks
 - local doctor checks
 - fresh-clone patch test
 

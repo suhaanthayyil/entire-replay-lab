@@ -184,6 +184,7 @@ patches/
 scripts/
   build-cli.sh         Build the Replay Lab CLI branch
   check-command-surface.sh Verify replay/eval commands and required flags
+  check-report-fixtures.sh Verify saved replay/eval report rendering
   check-patch.sh       Apply the patch to a fresh CLI clone and run Replay tests
   clean.sh             Remove generated build artifacts
   demo-commands.sh     Print commands for a real Entire-enabled repo

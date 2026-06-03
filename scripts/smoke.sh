@@ -16,6 +16,10 @@ echo "== Replay Lab smoke: command surface =="
 "$ROOT/scripts/check-command-surface.sh"
 
 echo
+echo "== Replay Lab smoke: report fixtures =="
+"$ROOT/scripts/check-report-fixtures.sh"
+
+echo
 echo "== Replay Lab smoke: doctor =="
 if [[ -n "$TARGET_REPO" ]]; then
   "$ROOT/scripts/doctor.sh" "$TARGET_REPO"

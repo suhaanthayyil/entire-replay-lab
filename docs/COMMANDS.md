@@ -40,6 +40,16 @@ commands, subcommands, and required user-facing flags.
 ./scripts/check-command-surface.sh
 ```
 
+### `./scripts/check-report-fixtures.sh`
+
+Seeds example replay/eval result JSON into a temporary git repo and verifies the
+built Replay Lab binary can render both text and `--json` reports.
+
+```bash
+./scripts/build-cli.sh
+./scripts/check-report-fixtures.sh
+```
+
 ### `./scripts/doctor.sh [repo]`
 
 Checks local tools, launchable agents, the built Replay Lab binary, and

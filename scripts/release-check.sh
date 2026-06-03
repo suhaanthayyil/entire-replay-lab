@@ -35,6 +35,10 @@ echo "== Release check: command surface =="
 "$ROOT/scripts/check-command-surface.sh"
 
 echo
+echo "== Release check: report fixtures =="
+"$ROOT/scripts/check-report-fixtures.sh"
+
+echo
 echo "== Release check: patch tests =="
 "$ROOT/scripts/check-patch.sh"
 
