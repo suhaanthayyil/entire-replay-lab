@@ -120,5 +120,7 @@ contract exists.
 - `schema_version` changes only for breaking JSON changes.
 - Large `diff` and `output` strings may be truncated.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.
+- Failed test commands may include `test.error` with the launch, cancellation,
+  or timeout cause.
 - Missing optional integrations use explicit false/empty values instead of
   failing the whole run.

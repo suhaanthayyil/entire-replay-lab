@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.36 - 2026-06-03
+
+- Added structured `test.error` output for failed replay test commands.
+- Test command timeouts now preserve the deadline cause and partial test output
+  in saved JSON reports and rendered text reports.
+- Updated the ReplayRun schema and eval example payload to validate the new
+  optional test error field.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.35 - 2026-06-03
 
 - Hardened optional semantic scoring to build its comparison commit from a

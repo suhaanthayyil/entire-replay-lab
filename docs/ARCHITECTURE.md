@@ -97,7 +97,7 @@ Replay Lab is intentionally diagnostic:
 - missing agent binary fails before creating a replay
 - unsupported agents are skipped in `eval run`
 - agent failures still save partial output and changed files when possible
-- timeouts preserve the timeout cause and partial output
+- agent and test-command timeouts preserve the timeout cause and partial output
 - diff collection uses a temporary git index so kept replay worktrees remain
   natural to inspect, with untracked files still shown as untracked
 - semantic scoring uses a temporary git index and unreachable comparison commit,

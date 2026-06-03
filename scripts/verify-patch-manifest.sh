@@ -77,7 +77,8 @@ for needle in \
   "TestReplayEvalAllAgentsExpandsEntireCoderList" \
   "TestReplayAgentAliasesCanonicalize" \
   "TestRootCommandHasReplayAndEval" \
-  "TestRunReplayProcessPreservesTimeoutErrorAndOutput"
+  "TestRunReplayProcessPreservesTimeoutErrorAndOutput" \
+  "TestRunReplayTestCommandPreservesTimeoutErrorAndOutput"
 do
   if ! grep -Fq "$needle" "$ENTIRE_REPLAY_PATCH"; then
     echo "Patch missing required text: $needle" >&2

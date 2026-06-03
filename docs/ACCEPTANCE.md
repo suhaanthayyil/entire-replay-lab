@@ -67,6 +67,8 @@ Proves:
   discovery instead of expanding to every checkpoint
 - explicit `--timeout 0s` values fail before agent lookup or checkpoint
   discovery instead of disabling the replay timeout
+- timed-out test commands preserve partial test output and a structured
+  timeout error in saved reports
 - replay diff collection sees untracked agent output without leaving
   intent-to-add index state behind in kept replay worktrees
 - optional semantic scoring sees staged and untracked replay output without

@@ -139,7 +139,13 @@
       ],
       "diff_truncated": false,
       "test": {
-        "status": "skipped"
+        "status": "failed",
+        "command": "python3 -m pytest",
+        "exit_code": -1,
+        "output": "collected 12 items before timeout",
+        "output_truncated": false,
+        "error": "test command timed out: context deadline exceeded",
+        "duration_ms": 30000
       },
       "metrics": {
         "file_precision": 50,
