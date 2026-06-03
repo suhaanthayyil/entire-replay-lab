@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.58 - 2026-06-03
+
+- Added schema-driven negative checks for numeric `minimum` and `maximum`
+  bounds in replay/eval examples.
+- Covered non-negative durations, token counters, run counts, risk scores, file
+  overlaps, and 0-100 score/rate fields wherever those bounded integers appear.
+- Made numeric range regressions fail locally if schema bounds are removed or
+  ignored.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.57 - 2026-06-03
 
 - Added local report consistency validation that rejects replay/eval timestamps

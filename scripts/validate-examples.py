@@ -718,6 +718,135 @@ def validate_rejects_duplicate_unique_arrays(
         )
 
 
+def set_path_value(root: Any, segments: list[str | int], value: Any) -> None:
+    target = root
+    for segment in segments[:-1]:
+        target = target[segment]
+    target[segments[-1]] = value
+
+
+def collect_numeric_bound_cases(
+    schema: dict[str, Any],
+    rule: dict[str, Any],
+    value: Any,
+    path: str,
+    segments: list[str | int],
+    schema_path: Path,
+    cache: dict[Path, dict[str, Any]],
+) -> list[tuple[str, list[str | int], str, int]]:
+    if "$ref" in rule:
+        target_schema, target_rule, target_path = resolve_ref(
+            schema,
+            schema_path,
+            str(rule["$ref"]),
+            cache,
+        )
+        return collect_numeric_bound_cases(
+            target_schema,
+            target_rule,
+            value,
+            path,
+            segments,
+            target_path,
+            cache,
+        )
+
+    cases: list[tuple[str, list[str | int], str, int]] = []
+    if isinstance(value, int) and not isinstance(value, bool):
+        minimum = rule.get("minimum")
+        maximum = rule.get("maximum")
+        if isinstance(minimum, int):
+            cases.append((path, list(segments), "expected >=", minimum - 1))
+        if isinstance(maximum, int):
+            cases.append((path, list(segments), "expected <=", maximum + 1))
+
+    if isinstance(value, dict):
+        properties = rule.get("properties", {})
+        if not isinstance(properties, dict):
+            raise ValidationError(f"{path}: properties must be an object")
+        for key, child in properties.items():
+            if key not in value:
+                continue
+            if not isinstance(child, dict):
+                raise ValidationError(f"{path}.{key}: property schema must be an object")
+            cases.extend(
+                collect_numeric_bound_cases(
+                    schema,
+                    child,
+                    value[key],
+                    f"{path}.{key}",
+                    [*segments, key],
+                    schema_path,
+                    cache,
+                )
+            )
+
+    if isinstance(value, list) and "items" in rule:
+        item_rule = rule["items"]
+        if not isinstance(item_rule, dict):
+            raise ValidationError(f"{path}: items schema must be an object")
+        for index, item in enumerate(value):
+            cases.extend(
+                collect_numeric_bound_cases(
+                    schema,
+                    item_rule,
+                    item,
+                    f"{path}[{index}]",
+                    [*segments, index],
+                    schema_path,
+                    cache,
+                )
+            )
+
+    return cases
+
+
+def validate_rejects_invalid_numeric_bounds(
+    example_path: Path,
+    schema_path: Path,
+) -> None:
+    schema_path = schema_path.resolve()
+    example = load_json(example_path)
+    schema = load_json(schema_path)
+    cache = {schema_path: schema}
+    example_name = display_path(example_path)
+    schema_name = display_path(schema_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    if not isinstance(schema, dict):
+        raise ValidationError(f"{schema_name}: schema root must be an object")
+
+    cases = collect_numeric_bound_cases(
+        schema,
+        schema,
+        example,
+        example_name,
+        [],
+        schema_path,
+        cache,
+    )
+    for case_path, segments, expected, invalid_value in cases:
+        mutated = deepcopy(example)
+        set_path_value(mutated, segments, invalid_value)
+        try:
+            validate(
+                schema,
+                schema,
+                mutated,
+                f"{example_name}#invalid-number-{case_path}",
+                schema_path,
+                {schema_path: schema},
+            )
+        except ValidationError as exc:
+            if expected not in str(exc):
+                raise ValidationError(
+                    f"{example_name}: numeric bound check for {case_path} failed "
+                    f"with unexpected error: {exc}"
+                ) from exc
+            continue
+        raise ValidationError(f"{example_name}: schema accepted invalid number {case_path}")
+
+
 def percent(numerator: int, denominator: int) -> int:
     if denominator == 0:
         return 100 if numerator == 0 else 0
@@ -1026,6 +1155,7 @@ def main() -> int:
             validate_date_time_order(example, schema)
             validate_rejects_inverted_date_times(example, schema, require_nested_examples)
             validate_rejects_duplicate_unique_arrays(example, schema, require_nested_examples)
+            validate_rejects_invalid_numeric_bounds(example, schema)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)
             validate_rejects_stale_eval_summary(example, schema)

@@ -121,6 +121,9 @@ Replay Lab is intentionally diagnostic:
   duplicate entries would make report comparison noisier without adding facts
 - file-list evidence is schema-checked as non-blank, so empty path strings do
   not masquerade as changed, touched, missing, extra, or risky files
+- numeric report fields are schema-checked against declared ranges, so negative
+  durations, counts, token totals, risk scores, or out-of-range percentages do
+  not pass local validation
 - replay and eval timestamps are schema-checked as RFC3339 date-time strings
   instead of accepting arbitrary text
 - timestamp consistency checks reject replay/eval rows whose finish time is

@@ -22,6 +22,8 @@ Proves:
 - schema validation rejects empty or whitespace-only required identity strings
 - schema validation rejects duplicate entries in set-like agent and file arrays
 - schema validation rejects empty or whitespace-only file-list entries
+- schema validation rejects negative numeric fields and percentage-like values
+  over 100
 - schema validation rejects malformed replay/eval timestamps
 - consistency validation rejects replay/eval reports that finish before they start
 - schemas parse

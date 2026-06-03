@@ -20,6 +20,8 @@ It checks:
 - Set-like replay/eval arrays reject duplicate values through local
   `uniqueItems` schema checks.
 - Replay file-list arrays reject empty or whitespace-only entries.
+- Numeric replay/eval fields reject negative values or values above their
+  declared maximums through local `minimum` and `maximum` schema checks.
 - Replay/eval timestamps reject malformed values through local `date-time`
   format checks.
 - Replay/eval timestamp consistency rejects reports that finish before they
