@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.57 - 2026-06-03
+
+- Added local report consistency validation that rejects replay/eval timestamps
+  where `finished_at` is earlier than `started_at`.
+- Covered standalone replay reports, eval wrapper timestamps, and embedded eval
+  replay run timestamps.
+- Added validator negative checks that invert finish times so temporal-order
+  regressions fail locally.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.56 - 2026-06-03
 
 - Added local JSON Schema `format: date-time` support for RFC3339 timestamp

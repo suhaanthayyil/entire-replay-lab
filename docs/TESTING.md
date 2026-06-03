@@ -22,6 +22,8 @@ It checks:
 - Replay file-list arrays reject empty or whitespace-only entries.
 - Replay/eval timestamps reject malformed values through local `date-time`
   format checks.
+- Replay/eval timestamp consistency rejects reports that finish before they
+  start.
 - Eval examples validate each embedded replay run against the ReplayRun schema.
 - Eval summaries are checked against their embedded replay runs, including
   status counts, pass rate, averages, risk, duration, and token totals.
@@ -226,6 +228,7 @@ Run a small eval:
   the schema treats those arrays as sets.
 - Saved JSON does not use blank strings as file-list evidence.
 - Saved JSON timestamps are valid RFC3339 date-time strings.
+- Saved JSON never reports `finished_at` earlier than `started_at`.
 - Skipped test rows still preserve the requested test command when earlier
   replay failures prevent execution.
 - Legacy reports with sparse run objects still render with replay `status` set

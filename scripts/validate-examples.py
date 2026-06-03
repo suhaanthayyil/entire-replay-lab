@@ -11,7 +11,7 @@ import json
 import re
 import sys
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -49,11 +49,21 @@ def type_name(value: Any) -> str:
     return type(value).__name__
 
 
-def is_date_time(value: str) -> bool:
+def parse_date_time(value: str) -> datetime:
     if DATE_TIME_RE.fullmatch(value) is None:
-        return False
+        raise ValueError("expected RFC3339 date-time shape")
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def format_date_time(value: datetime) -> str:
+    value = value.astimezone(timezone.utc)
+    text = value.isoformat(timespec="seconds")
+    return text.replace("+00:00", "Z")
+
+
+def is_date_time(value: str) -> bool:
     try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parse_date_time(value)
     except ValueError:
         return False
     return True
@@ -516,6 +526,91 @@ def validate_rejects_invalid_date_times(
         raise ValidationError(f"{example_name}: schema accepted invalid date-time {case_path}")
 
 
+def validate_date_time_order_in_report(report: dict[str, Any], path: str) -> None:
+    started = report.get("started_at")
+    finished = report.get("finished_at")
+    if not isinstance(started, str) or not isinstance(finished, str):
+        return
+    started_at = parse_date_time(started)
+    finished_at = parse_date_time(finished)
+    if finished_at < started_at:
+        raise ValidationError(
+            f"{path}: finished_at must be greater than or equal to started_at"
+        )
+
+
+def validate_date_time_order(example_path: Path, schema_path: Path) -> None:
+    schema_name = schema_path.resolve().name
+    if schema_name not in {"replay-run.schema.json", "eval-run.schema.json"}:
+        return
+    example = load_json(example_path)
+    example_name = display_path(example_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+    validate_date_time_order_in_report(example, example_name)
+    if schema_name != "eval-run.schema.json":
+        return
+    runs = example.get("runs", [])
+    if not isinstance(runs, list):
+        raise ValidationError(f"{example_name}.runs: expected array")
+    for index, run in enumerate(runs):
+        if not isinstance(run, dict):
+            raise ValidationError(f"{example_name}.runs[{index}]: expected object")
+        validate_date_time_order_in_report(run, f"{example_name}.runs[{index}]")
+
+
+def validate_rejects_inverted_date_times(
+    example_path: Path,
+    schema_path: Path,
+    require_nested_examples: bool,
+) -> None:
+    schema_name = schema_path.resolve().name
+    if schema_name not in {"replay-run.schema.json", "eval-run.schema.json"}:
+        return
+    example = load_json(example_path)
+    example_name = display_path(example_path)
+    if not isinstance(example, dict):
+        raise ValidationError(f"{example_name}: example root must be an object")
+
+    cases: list[tuple[str, dict[str, Any]]] = []
+
+    def invert_report_time(report: dict[str, Any]) -> None:
+        started = report.get("started_at")
+        if not isinstance(started, str):
+            raise ValidationError(f"{example_name}: expected started_at string")
+        started_at = parse_date_time(started)
+        report["finished_at"] = format_date_time(started_at - timedelta(seconds=1))
+
+    mutated = deepcopy(example)
+    invert_report_time(mutated)
+    cases.append(("finished_at", mutated))
+
+    if require_nested_examples and schema_name == "eval-run.schema.json":
+        runs = example.get("runs")
+        if not isinstance(runs, list) or not runs:
+            raise ValidationError(f"{example_name}.runs: expected non-empty array")
+        for index, run in enumerate(runs):
+            if not isinstance(run, dict):
+                continue
+            mutated = deepcopy(example)
+            invert_report_time(mutated["runs"][index])
+            cases.append((f"runs[{index}].finished_at", mutated))
+            break
+
+    for case_path, mutated_case in cases:
+        with tempfile_json(example_path.name, mutated_case) as mutated_path:
+            try:
+                validate_date_time_order(mutated_path, schema_path)
+            except ValidationError as exc:
+                if "finished_at must be greater than or equal to started_at" not in str(exc):
+                    raise ValidationError(
+                        f"{example_name}: inverted date-time check for {case_path} "
+                        f"failed with unexpected error: {exc}"
+                    ) from exc
+                continue
+        raise ValidationError(f"{example_name}: validator accepted inverted {case_path}")
+
+
 def validate_rejects_duplicate_unique_arrays(
     example_path: Path,
     schema_path: Path,
@@ -928,6 +1023,8 @@ def main() -> int:
             validate_rejects_invalid_required_strings(example, schema, require_nested_examples)
             validate_rejects_invalid_file_array_items(example, schema, require_nested_examples)
             validate_rejects_invalid_date_times(example, schema, require_nested_examples)
+            validate_date_time_order(example, schema)
+            validate_rejects_inverted_date_times(example, schema, require_nested_examples)
             validate_rejects_duplicate_unique_arrays(example, schema, require_nested_examples)
             validate_eval_summary_consistency(example, schema, require_nested_examples)
             validate_rejects_eval_run_extra_field(example, schema, require_nested_examples)

@@ -123,6 +123,8 @@ Replay Lab is intentionally diagnostic:
   not masquerade as changed, touched, missing, extra, or risky files
 - replay and eval timestamps are schema-checked as RFC3339 date-time strings
   instead of accepting arbitrary text
+- timestamp consistency checks reject replay/eval rows whose finish time is
+  earlier than their start time
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value
 - diff-inspection failures are saved as replay warnings while `changed_files`

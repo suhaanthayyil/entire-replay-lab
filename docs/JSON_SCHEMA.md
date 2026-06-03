@@ -127,6 +127,8 @@ contract exists.
 - File-list entries are non-blank wherever those arrays appear.
 - `started_at` and `finished_at` values are RFC3339 date-time strings when
   present.
+- Timestamp consistency validation rejects reports where `finished_at` is
+  earlier than `started_at`.
 - Large `diff` and `output` strings may be truncated.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.
 - Failed test commands may include `test.error` with the launch, cancellation,
