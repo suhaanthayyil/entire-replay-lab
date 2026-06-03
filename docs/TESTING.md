@@ -35,6 +35,8 @@ It checks:
 - Eval examples validate each embedded replay run against the ReplayRun schema.
 - Eval summaries are checked against their embedded replay runs, including
   status counts, pass rate, averages, risk, duration, and token totals.
+- Eval summary negative checks perturb every integer summary field in the eval
+  example so stale derived totals and averages are rejected.
 - Schemas parse successfully.
 - Project metadata, README badges, and MIT license text stay consistent.
 - Main docs exist and include the important setup sections.

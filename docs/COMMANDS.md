@@ -162,7 +162,9 @@ cross-schema references, JSON value types, closed root and nested objects,
 schema-version constants, replay/test status enums, required keys, non-blank
 required identity strings, unique set-like arrays, non-blank file-list entries,
 numeric range bounds, RFC3339 timestamps, eval-summary totals, and timestamp
-ordering. It can also validate explicit JSON/schema pairs.
+ordering. Eval-summary negative checks perturb every integer summary field so
+stale derived totals and averages are rejected. It can also validate explicit
+JSON/schema pairs.
 
 ```bash
 python3 ./scripts/validate-examples.py

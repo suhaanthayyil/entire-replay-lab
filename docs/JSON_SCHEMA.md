@@ -114,9 +114,11 @@ embedded replay runs.
 `ReplayEvalRun.runs[]` uses the same schema contract as a saved `ReplayRun`.
 Example eval summaries are also checked against the embedded runs so stale
 counts, rates, averages, risk scores, durations, or token totals fail
-validation. When `--agent all` is used, `agents` may include every built-in
-Entire coder. Pi appears as a skipped run until a safe non-interactive launch
-contract exists.
+validation. The local validator also mutates each integer summary field in the
+eval example so stale run/status counts, pass rates, averages, semantic fields,
+duration, risk, and token totals are all covered by negative checks. When
+`--agent all` is used, `agents` may include every built-in Entire coder. Pi
+appears as a skipped run until a safe non-interactive launch contract exists.
 
 ## Stability Rules
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.63 - 2026-06-03
+
+- Broadened eval-summary stale-value regression checks across every integer
+  summary field present in the eval example.
+- Covered run/status counts, pass rate, file averages, semantic averages,
+  semantic run counts, duration, risk score, and token totals for each summary
+  row.
+- Made derived-summary regressions fail locally if any checked total or average
+  stops being validated.
+- Updated acceptance, architecture, testing, command, and JSON schema docs.
+
 ## v0.1.62 - 2026-06-03
 
 - Added schema-driven negative checks for JSON Schema `type` constraints.

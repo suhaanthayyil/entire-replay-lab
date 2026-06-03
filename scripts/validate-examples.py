@@ -1627,20 +1627,26 @@ def validate_rejects_stale_eval_summary(example_path: Path, schema_path: Path) -
     summaries = example.get("summaries")
     if not runs or not isinstance(runs, list) or not summaries or not isinstance(summaries, list):
         return
-    if not isinstance(summaries[0], dict):
-        return
-    mutated = dict(example)
-    mutated_summaries = [dict(summary) if isinstance(summary, dict) else summary for summary in summaries]
-    current = mutated_summaries[0].get("passed", 0)
-    mutated_summaries[0]["passed"] = current + 1 if isinstance(current, int) else 1
-    mutated["summaries"] = mutated_summaries
+    cases: list[tuple[str, dict[str, Any]]] = []
+    for index, summary in enumerate(summaries):
+        if not isinstance(summary, dict):
+            continue
+        for key, value in summary.items():
+            if not isinstance(value, int) or isinstance(value, bool):
+                continue
+            mutated = deepcopy(example)
+            mutated["summaries"][index][key] = value + 1
+            cases.append((f"summaries[{index}].{key}", mutated))
 
-    with tempfile_json(example_path.name, mutated) as mutated_path:
-        try:
-            validate_eval_summary_consistency(mutated_path, schema_path, require_runs=False)
-        except ValidationError:
-            return
-    raise ValidationError(f"{example_name}: validator accepted a stale eval summary")
+    for case_path, mutated in cases:
+        with tempfile_json(example_path.name, mutated) as mutated_path:
+            try:
+                validate_eval_summary_consistency(mutated_path, schema_path, require_runs=False)
+            except ValidationError:
+                continue
+        raise ValidationError(
+            f"{example_name}: validator accepted stale eval summary field {case_path}"
+        )
 
 
 class tempfile_json:

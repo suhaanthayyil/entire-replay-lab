@@ -146,6 +146,9 @@ Replay Lab is intentionally diagnostic:
   legacy null arrays are re-emitted as schema-valid empty arrays
 - eval summaries are derived from embedded replay runs during save/read/JSON
   normalization so stale report summaries are repaired before rendering
+- eval summary consistency validation rejects stale derived run/status counts,
+  pass rates, averages, semantic fields, duration, risk, and token totals in the
+  checked examples
 - sparse eval reports with no run rows preserve their selected agent list during
   normalization instead of deriving an empty list
 - diff collection uses a temporary git index so kept replay worktrees remain

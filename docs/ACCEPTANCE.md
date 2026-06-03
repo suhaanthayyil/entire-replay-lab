@@ -34,6 +34,8 @@ Proves:
   over 100
 - schema validation rejects malformed replay/eval timestamps
 - consistency validation rejects replay/eval reports that finish before they start
+- eval summary consistency rejects stale derived counts, rates, averages, risk,
+  duration, and token totals
 - schemas parse
 - patch file exists and includes Replay Lab implementation files
 - patch file only touches the expected upstream files
