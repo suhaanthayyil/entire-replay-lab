@@ -120,4 +120,31 @@ if [[ "$REMOTE_TAG_COMMIT" != "$LATEST_LOCAL_COMMIT" ]]; then
   exit 1
 fi
 
-echo "OK release docs, local tags, and GitHub releases match; latest tag commit matches HEAD and origin; latest $LATEST_DOC."
+LATEST_DOC_PATH="$ROOT/docs/releases/$LATEST_DOC.md"
+LATEST_BODY_FILE="$WORKDIR/latest-body.md"
+gh release view "$LATEST_DOC" --repo "$REPO_SLUG" --json body --jq '.body' >"$LATEST_BODY_FILE"
+python3 - "$LATEST_DOC_PATH" "$LATEST_BODY_FILE" "$LATEST_DOC" <<'PY'
+import difflib
+import sys
+from pathlib import Path
+
+doc_path = Path(sys.argv[1])
+body_path = Path(sys.argv[2])
+version = sys.argv[3]
+expected = doc_path.read_text(encoding="utf-8").strip()
+actual = body_path.read_text(encoding="utf-8").strip()
+if expected != actual:
+    print(f"GitHub release body for {version} differs from {doc_path}.", file=sys.stderr)
+    diff = difflib.unified_diff(
+        expected.splitlines(),
+        actual.splitlines(),
+        fromfile=str(doc_path),
+        tofile=f"github:{version}",
+        lineterm="",
+    )
+    for line in diff:
+        print(line, file=sys.stderr)
+    raise SystemExit(1)
+PY
+
+echo "OK release docs, local tags, and GitHub releases match; latest body and latest tag commit match HEAD and origin; latest $LATEST_DOC."

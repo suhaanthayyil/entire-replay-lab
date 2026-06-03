@@ -46,7 +46,8 @@ After publishing, verify the remote release state:
 
 This checks that release-note files, local tags, GitHub releases, and the latest
 origin tag all agree, and that the latest release tag points at the current
-commit.
+commit. It also checks that the latest GitHub release body matches the checked-in
+release note.
 
 ## What To Include In Release Notes
 

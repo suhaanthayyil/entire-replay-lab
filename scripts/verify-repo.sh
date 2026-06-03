@@ -148,6 +148,7 @@ require_contains "Validate changelog and release-note consistency" "$ROOT/script
 require_contains "Replay Lab patch manifest" "$ROOT/scripts/verify-patch-manifest.sh"
 require_contains "GitHub releases match" "$ROOT/scripts/verify-release-state.sh"
 require_contains "latest tag commit match" "$ROOT/scripts/verify-release-state.sh"
+require_contains "latest body" "$ROOT/scripts/verify-release-state.sh"
 require_contains "Replay Lab reproducibility inputs" "$ROOT/scripts/verify-reproducibility.sh"
 require_contains "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
 require_contains "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"
