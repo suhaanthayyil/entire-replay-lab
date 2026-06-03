@@ -78,6 +78,15 @@ the build scripts, and documented consistently.
 ./scripts/verify-reproducibility.sh
 ```
 
+### `./scripts/verify-release-state.sh`
+
+After publishing a release, checks that `docs/releases/v*.md`, local git tags,
+and published GitHub releases match.
+
+```bash
+./scripts/verify-release-state.sh
+```
+
 ### `./scripts/refresh-patch.sh`
 
 Regenerates `patches/entire-replay-lab.patch` from a local CLI checkout.

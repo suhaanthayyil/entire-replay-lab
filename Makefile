@@ -1,4 +1,4 @@
-.PHONY: verify validate doc-links release-docs reproducibility build demo doctor check-patch smoke release-check clean
+.PHONY: verify validate doc-links release-docs reproducibility release-state build demo doctor check-patch smoke release-check clean
 
 verify:
 	./scripts/verify-repo.sh
@@ -14,6 +14,9 @@ release-docs:
 
 reproducibility:
 	./scripts/verify-reproducibility.sh
+
+release-state:
+	./scripts/verify-release-state.sh
 
 build:
 	./scripts/build-cli.sh

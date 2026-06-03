@@ -37,6 +37,12 @@ git push origin v0.1.0
 
 Then create the GitHub release using the matching file in `docs/releases/`.
 
+After publishing, verify the remote release state:
+
+```bash
+./scripts/verify-release-state.sh
+```
+
 ## What To Include In Release Notes
 
 - what pain the release solves

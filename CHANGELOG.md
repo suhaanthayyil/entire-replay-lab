@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.4 - 2026-06-02
+
+- Added post-release verification for release notes, local tags, and GitHub releases.
+
 ## v0.1.3 - 2026-06-02
 
 - Added automatic validation that changelog versions match release-note files.

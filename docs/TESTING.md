@@ -44,6 +44,12 @@ To verify those pinned inputs:
 ./scripts/verify-reproducibility.sh
 ```
 
+After publishing a release, verify release docs, local tags, and GitHub releases:
+
+```bash
+./scripts/verify-release-state.sh
+```
+
 To use a local CLI checkout that already has Replay Lab applied:
 
 ```bash

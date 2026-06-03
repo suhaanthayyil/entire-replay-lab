@@ -118,6 +118,7 @@ for file in \
   "$ROOT/scripts/validate-doc-links.py" \
   "$ROOT/scripts/validate-examples.py" \
   "$ROOT/scripts/validate-release-docs.py" \
+  "$ROOT/scripts/verify-release-state.sh" \
   "$ROOT/scripts/verify-reproducibility.sh"
 do
   require_file "$file"
@@ -137,6 +138,7 @@ require_contains "ENTIRE_CLI_DEFAULT_REF" "$ROOT/scripts/replay-lab-env.sh"
 require_contains "Validate local Markdown links" "$ROOT/scripts/validate-doc-links.py"
 require_contains "Validate Replay Lab example JSON" "$ROOT/scripts/validate-examples.py"
 require_contains "Validate changelog and release-note consistency" "$ROOT/scripts/validate-release-docs.py"
+require_contains "GitHub releases match" "$ROOT/scripts/verify-release-state.sh"
 require_contains "Replay Lab reproducibility inputs" "$ROOT/scripts/verify-reproducibility.sh"
 require_contains "schema_version" "$ROOT/docs/JSON_SCHEMA.md"
 require_contains "cmd/entire/cli/replay.go" "$ROOT/patches/entire-replay-lab.patch"
