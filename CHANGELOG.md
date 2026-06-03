@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.49 - 2026-06-03
+
+- Normalized unknown non-empty replay statuses to `failed` and unknown test
+  statuses to `skipped` before JSON output.
+- Preserved the original unknown status strings as replay warnings so legacy
+  data remains auditable.
+- Recomputed eval summaries after status normalization so summary counts match
+  rendered run rows.
+- Strengthened Go coverage for standalone replay reports and eval reports with
+  unknown legacy statuses.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.48 - 2026-06-03
 
 - Normalized missing or empty replay `status` values to `failed` when reading

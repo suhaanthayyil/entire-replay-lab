@@ -106,6 +106,8 @@ Replay Lab is intentionally diagnostic:
   failures prevent execution
 - legacy reports with missing run statuses are normalized to failed runs before
   rendering JSON
+- legacy reports with unknown run or test statuses are normalized to
+  schema-valid defaults and keep the original status strings in warnings
 - legacy reports with missing test statuses are normalized to skipped tests
   before rendering JSON
 - setup, agent, and test-command steps receive independent timeout contexts

@@ -126,6 +126,9 @@ contract exists.
   requested but an earlier replay failure prevented execution.
 - Report readers normalize missing legacy replay `status` values to `failed`
   before JSON output.
+- Report readers normalize unknown non-empty replay `status` values to `failed`
+  and unknown `test.status` values to `skipped`, preserving original values in
+  warnings.
 - Report readers normalize missing legacy `test.status` values to `skipped`
   before JSON output.
 - `changed_files` remains an array, including when diff inspection fails and a

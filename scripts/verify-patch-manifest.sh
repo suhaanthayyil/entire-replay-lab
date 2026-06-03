@@ -87,9 +87,11 @@ for needle in \
   "TestReplayCheckpointSavesReportWhenWorktreeSetupFails" \
   "TestReplayCheckpointKeepsStableChangedFilesWhenDiffInspectionFails" \
   "TestReadReplayRunNormalizesLegacyNullArrays" \
+  "TestReadReplayRunNormalizesLegacyUnknownStatuses" \
   "TestReadReplayRunNormalizesLegacyMissingRunStatus" \
   "TestReadReplayRunNormalizesLegacyMissingTestStatus" \
   "TestReadReplayEvalNormalizesLegacyRequiredArrays" \
+  "TestReadReplayEvalNormalizesLegacyUnknownStatuses" \
   "TestReadReplayEvalNormalizesLegacyMissingRunStatus" \
   "TestReadReplayEvalNormalizesLegacyMissingTestStatus" \
   "TestReadReplayEvalRecomputesStaleSummaries" \

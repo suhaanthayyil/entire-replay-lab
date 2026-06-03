@@ -73,6 +73,8 @@ Proves:
   checkpoint, or agent-availability failures prevent the command from running
 - report readers normalize missing legacy replay statuses to `failed` before
   JSON output
+- report readers normalize unknown legacy replay/test statuses to schema-valid
+  defaults while preserving the original values in warnings
 - report readers normalize missing legacy test statuses to `skipped` before
   JSON output
 - replay agents and optional test commands each receive their own `--timeout`

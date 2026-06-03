@@ -217,6 +217,8 @@ Run a small eval:
   replay failures prevent execution.
 - Legacy reports with sparse run objects still render with replay `status` set
   to `failed`.
+- Legacy reports with unknown run or test statuses still render schema-valid
+  statuses and preserve the original values in warnings.
 - Legacy reports with sparse test objects still render with `test.status` set
   to `skipped`.
 - Worktree setup failures after checkpoint resolution still save a failed report
