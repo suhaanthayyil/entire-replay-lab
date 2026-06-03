@@ -99,6 +99,8 @@ Replay Lab is intentionally diagnostic:
 - checkpoint resolution failures in `eval run` are recorded once per selected
   agent so summaries remain agent-complete
 - agent failures still save partial output and changed files when possible
+- worktree setup failures after checkpoint resolution save a failed report
+  instead of returning without an artifact
 - agent and test-command timeouts preserve the timeout cause and partial output
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value

@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..79ff52e2
+index 00000000..e868e63e
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,2019 @@
+@@ -0,0 +1,2031 @@
 +package cli
 +
 +import (
@@ -211,6 +211,7 @@ index 00000000..79ff52e2
 +var (
 +	replayRunnerFor               = defaultReplayRunnerFor
 +	replayCommandForAgent         = defaultReplayCommandForAgent
++	createReplayWorktreeForReplay = createReplayWorktree
 +	removeReplayWorktreeForReplay = removeReplayWorktree
 +)
 +
@@ -634,10 +635,21 @@ index 00000000..79ff52e2
 +	}
 +
 +	setupCtx, setupCancel := replayContextWithTimeout(ctx, opts.Timeout)
-+	worktree, err := createReplayWorktree(setupCtx, repoRoot, spec.BaseCommit)
++	worktree, err := createReplayWorktreeForReplay(setupCtx, repoRoot, spec.BaseCommit)
 +	setupCancel()
 +	if err != nil {
-+		return nil, err
++		run.Status = replayStatusFailed
++		run.Error = err.Error()
++		run.ChangedFiles = []string{}
++		run.Metrics = ReplayMetrics{}
++		run.FinishedAt = time.Now().UTC()
++		run.DurationMS = run.FinishedAt.Sub(run.StartedAt).Milliseconds()
++		path, saveErr := saveReplayRun(ctx, run)
++		if saveErr != nil {
++			return nil, saveErr
++		}
++		run.ResultPath = path
++		return run, nil
 +	}
 +
 +	agentCtx, agentCancel := replayContextWithTimeout(ctx, opts.Timeout)
@@ -2058,10 +2070,10 @@ index 00000000..79ff52e2
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..47f46da8
+index 00000000..b78e6ce6
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1574 @@
+@@ -0,0 +1,1636 @@
 +package cli
 +
 +import (
@@ -2280,6 +2292,68 @@ index 00000000..47f46da8
 +			strings.Contains(warning, "cleanup refused")
 +	}) {
 +		t.Fatalf("loaded Warnings = %v, want cleanup failure warning", loaded.Warnings)
++	}
++}
++
++func TestReplayCheckpointSavesReportWhenWorktreeSetupFails(t *testing.T) {
++	_, cpID, _, _ := newReplayRepo(t)
++	restore := stubReplayRunner(func(_ context.Context, _ ReplayRunnerRequest) (ReplayRunnerResult, error) {
++		t.Fatal("runner should not execute when worktree setup fails")
++		return ReplayRunnerResult{}, nil
++	})
++	defer restore()
++
++	previousCreate := createReplayWorktreeForReplay
++	createReplayWorktreeForReplay = func(context.Context, string, string) (string, error) {
++		return "", errors.New("worktree setup refused")
++	}
++	defer func() { createReplayWorktreeForReplay = previousCreate }()
++
++	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
++		Agent:       fakeReplayAgent,
++		Model:       "setup-model",
++		TestCommand: "python3 -m py_compile " + replayFixtureFile,
++	})
++	if err != nil {
++		t.Fatalf("runReplayCheckpoint() error = %v", err)
++	}
++	if run.Status != replayStatusFailed {
++		t.Fatalf("Status = %q, want failed", run.Status)
++	}
++	if !strings.Contains(run.Error, "worktree setup refused") {
++		t.Fatalf("Error = %q, want setup failure", run.Error)
++	}
++	if run.Model != "setup-model" {
++		t.Fatalf("Model = %q, want setup-model", run.Model)
++	}
++	if run.WorktreePath != "" {
++		t.Fatalf("WorktreePath = %q, want empty when setup fails", run.WorktreePath)
++	}
++	if run.ChangedFiles == nil {
++		t.Fatal("ChangedFiles is nil, want stable empty JSON array")
++	}
++	if run.Test.Status != replayTestStatusSkipped {
++		t.Fatalf("test status = %q, want skipped", run.Test.Status)
++	}
++	if run.ResultPath == "" {
++		t.Fatal("ResultPath is empty")
++	}
++	if _, err := os.Stat(run.ResultPath); err != nil {
++		t.Fatalf("saved setup-failure report missing: %v", err)
++	}
++
++	loaded, err := readReplayRun(context.Background(), run.ID)
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if loaded.ID != run.ID || loaded.Spec.CheckpointID != cpID || loaded.Status != replayStatusFailed {
++		t.Fatalf("loaded run = %+v", loaded)
++	}
++	if !strings.Contains(loaded.Error, "worktree setup refused") {
++		t.Fatalf("loaded Error = %q, want setup failure", loaded.Error)
++	}
++	if loaded.ChangedFiles == nil {
++		t.Fatal("loaded ChangedFiles is nil, want stable empty JSON array")
 +	}
 +}
 +

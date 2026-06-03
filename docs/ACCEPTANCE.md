@@ -71,6 +71,8 @@ Proves:
   timeout error in saved reports
 - replay agents and optional test commands each receive their own `--timeout`
   budget, so a slow successful agent does not shorten the test timeout window
+- worktree setup failures after checkpoint resolution still save a failed replay
+  report with the spec, agent, model, skipped test status, and setup error
 - replay diff collection sees untracked agent output without leaving
   intent-to-add index state behind in kept replay worktrees
 - cleanup failures preserve the leaked replay worktree path and warning in the
@@ -156,6 +158,8 @@ Expected:
 - output includes checkpoint, agent, status, commit range, file metrics, test
   status, optional semantic similarity, risk, and saved report path
 - saved JSON appears under `.git/entire-replay/runs/`
+- if isolated worktree setup fails, saved JSON still appears with failed status
+  and the setup error
 - if automatic cleanup fails, the saved JSON includes the surviving worktree
   path plus a cleanup warning
 

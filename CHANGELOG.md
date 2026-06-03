@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.41 - 2026-06-03
+
+- Saved a failed replay report when worktree setup fails after checkpoint
+  resolution, preserving the run ID, spec, agent, model, skipped test status,
+  stable empty changed-file arrays, and setup error.
+- Added focused Go coverage proving the replay agent is not launched after
+  setup failure and that the saved JSON report remains inspectable.
+- Updated acceptance, architecture, testing, and reproducibility docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.40 - 2026-06-03
 
 - Added saved replay warnings when an installed `entire-sem` command fails,
