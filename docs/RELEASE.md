@@ -10,10 +10,10 @@ Run the release check before tagging any prototype release:
 ./scripts/release-check.sh
 ```
 
-It verifies the repository package, example schemas, patched CLI build,
-Replay/Eval command surface, saved report fixtures, release-note consistency,
-pinned reproducibility metadata, patch manifest, and fresh-clone patch tests
-without launching a live coding agent.
+It verifies the repository package, example schemas, Markdown links/fences,
+patched CLI build, Replay/Eval command surface, saved report fixtures,
+release-note consistency, pinned reproducibility metadata, patch manifest, and
+fresh-clone patch tests without launching a live coding agent.
 
 ## Before Tagging
 

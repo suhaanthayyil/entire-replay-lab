@@ -89,6 +89,15 @@ Validates that `CHANGELOG.md` and `docs/releases/v*.md` stay in sync.
 python3 ./scripts/validate-release-docs.py
 ```
 
+### `./scripts/validate-markdown-fences.py`
+
+Validates Markdown fenced code blocks, allowed fence languages, and JSON fence
+syntax across README and docs.
+
+```bash
+python3 ./scripts/validate-markdown-fences.py
+```
+
 ### `./scripts/verify-reproducibility.sh`
 
 Checks that the pinned upstream CLI repo/ref/patch path are non-empty, shared by

@@ -17,6 +17,8 @@ It checks:
 - Schemas parse successfully.
 - Main docs exist and include the important setup sections.
 - Local Markdown links and anchors resolve.
+- Markdown code fences are closed, use expected languages, and JSON snippets
+  parse.
 - Changelog and release-note files stay in sync.
 - Reproducibility metadata is in sync.
 - The Replay Lab patch touches only the expected upstream files.

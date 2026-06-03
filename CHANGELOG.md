@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.13 - 2026-06-03
+
+- Added Markdown fenced code block validation.
+
 ## v0.1.12 - 2026-06-03
 
 - Extended release body verification to every published release.

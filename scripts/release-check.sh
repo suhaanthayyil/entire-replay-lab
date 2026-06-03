@@ -15,6 +15,10 @@ echo "== Release check: markdown link validation =="
 python3 "$ROOT/scripts/validate-doc-links.py"
 
 echo
+echo "== Release check: markdown fence validation =="
+python3 "$ROOT/scripts/validate-markdown-fences.py"
+
+echo
 echo "== Release check: release docs validation =="
 python3 "$ROOT/scripts/validate-release-docs.py"
 
