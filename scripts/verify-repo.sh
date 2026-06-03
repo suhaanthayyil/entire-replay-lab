@@ -25,6 +25,7 @@ python3 -m json.tool "$ROOT/examples/eval-run.json" >/dev/null
 python3 -m json.tool "$ROOT/schemas/replay-run.schema.json" >/dev/null
 python3 -m json.tool "$ROOT/schemas/eval-run.schema.json" >/dev/null
 python3 "$ROOT/scripts/validate-examples.py" >/dev/null
+python3 "$ROOT/scripts/validate-project-metadata.py" >/dev/null
 python3 "$ROOT/scripts/validate-doc-links.py" >/dev/null
 python3 "$ROOT/scripts/validate-markdown-fences.py" >/dev/null
 python3 "$ROOT/scripts/validate-release-docs.py" >/dev/null
@@ -122,6 +123,7 @@ for file in \
   "$ROOT/scripts/validate-doc-links.py" \
   "$ROOT/scripts/validate-examples.py" \
   "$ROOT/scripts/validate-markdown-fences.py" \
+  "$ROOT/scripts/validate-project-metadata.py" \
   "$ROOT/scripts/validate-release-docs.py" \
   "$ROOT/scripts/verify-patch-manifest.sh" \
   "$ROOT/scripts/verify-release-state.sh" \
@@ -147,6 +149,7 @@ require_contains "ENTIRE_REPLAY_DEFAULT_PATCH_SHA256" "$ROOT/scripts/replay-lab-
 require_contains "Validate local Markdown links" "$ROOT/scripts/validate-doc-links.py"
 require_contains "Validate Replay Lab example JSON" "$ROOT/scripts/validate-examples.py"
 require_contains "Validate Markdown fenced code blocks" "$ROOT/scripts/validate-markdown-fences.py"
+require_contains "Validate Replay Lab project metadata" "$ROOT/scripts/validate-project-metadata.py"
 require_contains "Validate changelog and release-note consistency" "$ROOT/scripts/validate-release-docs.py"
 require_contains "Replay Lab patch manifest" "$ROOT/scripts/verify-patch-manifest.sh"
 require_contains "GitHub releases match" "$ROOT/scripts/verify-release-state.sh"

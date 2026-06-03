@@ -81,6 +81,15 @@ Validates example JSON payloads against the local schema files.
 python3 ./scripts/validate-examples.py
 ```
 
+### `./scripts/validate-project-metadata.py`
+
+Validates the README badges, MIT license text, prototype positioning, and basic
+license hygiene so the repo stays easy for Entire to inspect and reuse.
+
+```bash
+python3 ./scripts/validate-project-metadata.py
+```
+
 ### `./scripts/validate-release-docs.py`
 
 Validates that `CHANGELOG.md` and `docs/releases/v*.md` stay in sync.

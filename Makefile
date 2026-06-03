@@ -1,7 +1,10 @@
-.PHONY: verify validate doc-links markdown-fences release-docs reproducibility patch-manifest command-surface report-fixtures release-state build demo doctor check-patch smoke release-check clean
+.PHONY: verify metadata validate doc-links markdown-fences release-docs reproducibility patch-manifest command-surface report-fixtures release-state build demo doctor check-patch smoke release-check clean
 
 verify:
 	./scripts/verify-repo.sh
+
+metadata:
+	python3 ./scripts/validate-project-metadata.py
 
 validate:
 	python3 ./scripts/validate-examples.py

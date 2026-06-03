@@ -15,6 +15,7 @@ It checks:
 - JSON examples parse successfully.
 - JSON examples validate against the local schemas.
 - Schemas parse successfully.
+- Project metadata, README badges, and MIT license text stay consistent.
 - Main docs exist and include the important setup sections.
 - Local Markdown links and anchors resolve.
 - Markdown code fences are closed, use expected languages, and JSON snippets

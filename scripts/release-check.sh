@@ -7,6 +7,10 @@ echo "== Release check: repo verification =="
 "$ROOT/scripts/verify-repo.sh"
 
 echo
+echo "== Release check: project metadata =="
+python3 "$ROOT/scripts/validate-project-metadata.py"
+
+echo
 echo "== Release check: schema validation =="
 python3 "$ROOT/scripts/validate-examples.py"
 

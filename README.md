@@ -196,6 +196,7 @@ scripts/
   validate-doc-links.py Validate local Markdown links and anchors
   validate-examples.py Validate example JSON against local schemas
   validate-markdown-fences.py Validate Markdown fences and JSON snippets
+  validate-project-metadata.py Validate MIT license and repo identity text
   validate-release-docs.py Validate changelog and release-note consistency
   verify-patch-manifest.sh Check the patch touches only expected upstream files
   verify-release-state.sh Check docs, tags, and GitHub releases after publishing

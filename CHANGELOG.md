@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.14 - 2026-06-03
+
+- Added project metadata and MIT license hygiene validation.
+
 ## v0.1.13 - 2026-06-03
 
 - Added Markdown fenced code block validation.
