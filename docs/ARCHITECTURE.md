@@ -96,6 +96,8 @@ Replay Lab is intentionally diagnostic:
 
 - missing agent binary fails before creating a replay
 - unsupported agents are skipped in `eval run`
+- checkpoint resolution failures in `eval run` are recorded once per selected
+  agent so summaries remain agent-complete
 - agent failures still save partial output and changed files when possible
 - agent and test-command timeouts preserve the timeout cause and partial output
 - diff collection uses a temporary git index so kept replay worktrees remain

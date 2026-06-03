@@ -75,6 +75,7 @@ for needle in \
   "func newEvalCmd" \
   "replayAgentAll" \
   "TestReplayEvalAllAgentsExpandsEntireCoderList" \
+  "one failed row per selected agent" \
   "TestReplayAgentAliasesCanonicalize" \
   "TestRootCommandHasReplayAndEval" \
   "TestRunReplayProcessPreservesTimeoutErrorAndOutput" \

@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..9852d62b
+index 00000000..a2004cf0
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,1991 @@
+@@ -0,0 +1,1995 @@
 +package cli
 +
 +import (
@@ -448,19 +448,23 @@ index 00000000..9852d62b
 +	for _, cp := range checkpoints {
 +		spec, err := buildReplaySpec(ctx, cp)
 +		if err != nil {
-+			now := time.Now().UTC()
-+			eval.Runs = append(eval.Runs, ReplayRun{
-+				SchemaVersion: replaySchemaVersion,
-+				ID:            newReplayID(),
-+				Status:        replayStatusFailed,
-+				StartedAt:     now,
-+				FinishedAt:    now,
-+				Error:         err.Error(),
-+				Spec:          ReplaySpec{CheckpointID: cp, FilesTouched: []string{}},
-+				ChangedFiles:  []string{},
-+				Test:          ReplayTestRun{Status: replayTestStatusSkipped},
-+				Metrics:       ReplayMetrics{},
-+			})
++			for _, agentName := range agents {
++				now := time.Now().UTC()
++				eval.Runs = append(eval.Runs, ReplayRun{
++					SchemaVersion: replaySchemaVersion,
++					ID:            newReplayID(),
++					Spec:          ReplaySpec{CheckpointID: cp, FilesTouched: []string{}},
++					Agent:         agentName,
++					Model:         opts.Model,
++					Status:        replayStatusFailed,
++					StartedAt:     now,
++					FinishedAt:    now,
++					ChangedFiles:  []string{},
++					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Metrics:       ReplayMetrics{},
++					Error:         err.Error(),
++				})
++			}
 +			continue
 +		}
 +		for _, agentName := range agents {
@@ -2030,10 +2034,10 @@ index 00000000..9852d62b
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..f8eceeec
+index 00000000..fe48f1ec
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1415 @@
+@@ -0,0 +1,1447 @@
 +package cli
 +
 +import (
@@ -2708,23 +2712,55 @@ index 00000000..f8eceeec
 +
 +	eval, err := runReplayEval(context.Background(), replayEvalOptions{
 +		Checkpoints: []string{"deadbeefcafe"},
-+		Agents:      []string{fakeReplayAgent},
++		Agents:      []string{fakeReplayAgent, string(agentpkg.AgentNameCodex)},
++		Model:       "model-for-failed-checkpoint",
 +	})
 +	if err != nil {
 +		t.Fatalf("runReplayEval() error = %v", err)
 +	}
-+	if len(eval.Runs) != 1 {
-+		t.Fatalf("runs = %d, want 1", len(eval.Runs))
++	if len(eval.Runs) != 2 {
++		t.Fatalf("runs = %d, want one failed row per selected agent", len(eval.Runs))
 +	}
-+	run := eval.Runs[0]
-+	if run.Status != replayStatusFailed {
-+		t.Fatalf("status = %q, want failed", run.Status)
++	if !slices.Equal(eval.Agents, []string{fakeReplayAgent, string(agentpkg.AgentNameCodex)}) {
++		t.Fatalf("agents = %v", eval.Agents)
 +	}
-+	if run.Spec.FilesTouched == nil {
-+		t.Fatal("Spec.FilesTouched is nil, want stable empty JSON array")
++	seenAgents := map[string]bool{}
++	for _, run := range eval.Runs {
++		seenAgents[run.Agent] = true
++		if run.Status != replayStatusFailed {
++			t.Fatalf("%s status = %q, want failed", run.Agent, run.Status)
++		}
++		if run.Model != "model-for-failed-checkpoint" {
++			t.Fatalf("%s model = %q", run.Agent, run.Model)
++		}
++		if !strings.Contains(run.Error, "checkpoint deadbeefcafe was not found") {
++			t.Fatalf("%s error = %q", run.Agent, run.Error)
++		}
++		if run.Spec.CheckpointID != "deadbeefcafe" {
++			t.Fatalf("%s checkpoint = %q", run.Agent, run.Spec.CheckpointID)
++		}
++		if run.Spec.FilesTouched == nil {
++			t.Fatalf("%s Spec.FilesTouched is nil, want stable empty JSON array", run.Agent)
++		}
++		if run.ChangedFiles == nil {
++			t.Fatalf("%s ChangedFiles is nil, want stable empty JSON array", run.Agent)
++		}
++		if run.Test.Status != replayTestStatusSkipped {
++			t.Fatalf("%s test status = %q, want skipped", run.Agent, run.Test.Status)
++		}
 +	}
-+	if run.ChangedFiles == nil {
-+		t.Fatal("ChangedFiles is nil, want stable empty JSON array")
++	for _, agentName := range []string{fakeReplayAgent, string(agentpkg.AgentNameCodex)} {
++		if !seenAgents[agentName] {
++			t.Fatalf("missing failed row for %s: %+v", agentName, eval.Runs)
++		}
++	}
++	if len(eval.Summaries) != 2 {
++		t.Fatalf("summaries = %d, want one per selected agent", len(eval.Summaries))
++	}
++	for _, summary := range eval.Summaries {
++		if summary.Runs != 1 || summary.Failed != 1 || summary.Skipped != 0 || summary.Passed != 0 {
++			t.Fatalf("summary = %+v, want one failed run", summary)
++		}
 +	}
 +	var out bytes.Buffer
 +	if err := writeReplayJSON(&out, eval); err != nil {

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.37 - 2026-06-03
+
+- Hardened eval runs so checkpoint resolution failures still emit one
+  schema-valid failed row per selected agent.
+- Missing-checkpoint eval rows now preserve selected agent names, model
+  overrides, stable empty arrays, skipped test status, and per-agent summaries.
+- Added focused Go coverage for the missing-checkpoint eval matrix behavior.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.36 - 2026-06-03
 
 - Added structured `test.error` output for failed replay test commands.

@@ -79,6 +79,8 @@ Proves:
   schema-valid JSON modes
 - missing replay/eval report IDs fail with clear `read ... report` errors in
   text and `--json` modes
+- eval checkpoint resolution failures still produce one failed, schema-valid
+  replay row per selected agent, so summaries keep the requested agent matrix
 - eval report schemas validate embedded replay runs with the same ReplayRun
   contract used for standalone replay reports
 - eval summary totals match the embedded replay runs that the report carries
