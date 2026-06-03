@@ -213,6 +213,8 @@ Run a small eval:
 - Output includes status, range, file metrics, tests, optional semantic score,
   risk, and saved report path.
 - Saved JSON lands under `.git/entire-replay/`.
+- Skipped test rows still preserve the requested test command when earlier
+  replay failures prevent execution.
 - Worktree setup failures after checkpoint resolution still save a failed report
   with a skipped test status and stable empty changed-file array.
 - Diff-inspection failures still save a report warning and stable empty

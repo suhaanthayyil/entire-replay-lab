@@ -81,6 +81,7 @@ for needle in \
   "TestRunReplayProcessPreservesTimeoutErrorAndOutput" \
   "TestRunReplayTestCommandPreservesTimeoutErrorAndOutput" \
   "TestReplayCheckpointReportsWorktreePathWhenCleanupFails" \
+  "TestReplayCheckpointSkipsTestsWhenAgentFails" \
   "TestReplayCheckpointTimeoutBudgetAppliesSeparatelyToAgentAndTest" \
   "TestReplayCheckpointWarnsWhenInstalledSemanticScoringFails" \
   "TestReplayCheckpointSavesReportWhenWorktreeSetupFails" \

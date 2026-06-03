@@ -102,6 +102,8 @@ Replay Lab is intentionally diagnostic:
 - worktree setup failures after checkpoint resolution save a failed report
   instead of returning without an artifact
 - agent and test-command timeouts preserve the timeout cause and partial output
+- skipped test rows preserve the requested test command when earlier replay
+  failures prevent execution
 - setup, agent, and test-command steps receive independent timeout contexts
   derived from the command `--timeout` value
 - diff-inspection failures are saved as replay warnings while `changed_files`

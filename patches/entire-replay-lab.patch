@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..252aa94d
+index 00000000..cafb47bb
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,2108 @@
+@@ -0,0 +1,2112 @@
 +package cli
 +
 +import (
@@ -416,6 +416,10 @@ index 00000000..252aa94d
 +	return ctx, func() {}
 +}
 +
++func skippedReplayTestRun(command string) ReplayTestRun {
++	return ReplayTestRun{Status: replayTestStatusSkipped, Command: command}
++}
++
 +func runReplayCheckpoint(ctx context.Context, checkpointRef string, opts replayCheckpointOptions) (*ReplayRun, error) {
 +	opts.Agent = canonicalReplayAgentName(opts.Agent)
 +	if err := validateReplayAgentAvailable(opts.Agent); err != nil {
@@ -470,7 +474,7 @@ index 00000000..252aa94d
 +					StartedAt:     now,
 +					FinishedAt:    now,
 +					ChangedFiles:  []string{},
-+					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Test:          skippedReplayTestRun(opts.TestCommand),
 +					Metrics:       ReplayMetrics{},
 +					Error:         err.Error(),
 +				})
@@ -490,7 +494,7 @@ index 00000000..252aa94d
 +					StartedAt:     now,
 +					FinishedAt:    now,
 +					ChangedFiles:  []string{},
-+					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Test:          skippedReplayTestRun(opts.TestCommand),
 +					Metrics:       ReplayMetrics{},
 +					Error:         err.Error(),
 +				})
@@ -516,7 +520,7 @@ index 00000000..252aa94d
 +					StartedAt:     now,
 +					FinishedAt:    now,
 +					ChangedFiles:  []string{},
-+					Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++					Test:          skippedReplayTestRun(opts.TestCommand),
 +					Metrics:       ReplayMetrics{},
 +					Error:         err.Error(),
 +				}
@@ -632,7 +636,7 @@ index 00000000..252aa94d
 +		Model:         opts.Model,
 +		Status:        replayStatusRunning,
 +		StartedAt:     time.Now().UTC(),
-+		Test:          ReplayTestRun{Status: replayTestStatusSkipped},
++		Test:          skippedReplayTestRun(opts.TestCommand),
 +	}
 +
 +	setupCtx, setupCancel := replayContextWithTimeout(ctx, opts.Timeout)
@@ -2147,10 +2151,10 @@ index 00000000..252aa94d
 +}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..55f1723a
+index 00000000..7ac26068
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,2013 @@
+@@ -0,0 +1,2032 @@
 +package cli
 +
 +import (
@@ -2412,6 +2416,9 @@ index 00000000..55f1723a
 +	if run.Test.Status != replayTestStatusSkipped {
 +		t.Fatalf("test status = %q, want skipped", run.Test.Status)
 +	}
++	if run.Test.Command != "python3 -m py_compile "+replayFixtureFile {
++		t.Fatalf("test command = %q, want requested setup-failure command", run.Test.Command)
++	}
 +	if run.ResultPath == "" {
 +		t.Fatal("ResultPath is empty")
 +	}
@@ -2431,6 +2438,9 @@ index 00000000..55f1723a
 +	}
 +	if loaded.ChangedFiles == nil {
 +		t.Fatal("loaded ChangedFiles is nil, want stable empty JSON array")
++	}
++	if loaded.Test.Command != "python3 -m py_compile "+replayFixtureFile {
++		t.Fatalf("loaded test command = %q, want requested setup-failure command", loaded.Test.Command)
 +	}
 +}
 +
@@ -2703,6 +2713,7 @@ index 00000000..55f1723a
 +
 +func TestReplayCheckpointSkipsTestsWhenAgentFails(t *testing.T) {
 +	_, cpID, _, _ := newReplayRepo(t)
++	testCommand := "mkdir -p __pycache__ && printf artifact > __pycache__/artifact.pyc"
 +	restore := stubReplayRunner(func(_ context.Context, req ReplayRunnerRequest) (ReplayRunnerResult, error) {
 +		if err := os.WriteFile(filepath.Join(req.WorktreePath, replayFixtureFile), []byte("def existing():\n    return 1\n"), 0o644); err != nil {
 +			return ReplayRunnerResult{}, err
@@ -2713,7 +2724,7 @@ index 00000000..55f1723a
 +
 +	run, err := runReplayCheckpoint(context.Background(), cpID, replayCheckpointOptions{
 +		Agent:       fakeReplayAgent,
-+		TestCommand: "mkdir -p __pycache__ && printf artifact > __pycache__/artifact.pyc",
++		TestCommand: testCommand,
 +	})
 +	if err != nil {
 +		t.Fatalf("runReplayCheckpoint() error = %v", err)
@@ -2723,6 +2734,9 @@ index 00000000..55f1723a
 +	}
 +	if run.Test.Status != replayTestStatusSkipped {
 +		t.Fatalf("test status = %q, want skipped", run.Test.Status)
++	}
++	if run.Test.Command != testCommand {
++		t.Fatalf("test command = %q, want requested skipped command", run.Test.Command)
 +	}
 +	if slices.Contains(run.ChangedFiles, "__pycache__/artifact.pyc") {
 +		t.Fatalf("ChangedFiles include test artifact: %q", strings.Join(run.ChangedFiles, ","))
@@ -3299,11 +3313,13 @@ index 00000000..55f1723a
 +
 +func TestReplayEvalMissingCheckpointUsesStableJSONArrays(t *testing.T) {
 +	_, _, _, _ = newReplayRepo(t)
++	testCommand := "go test ./..."
 +
 +	eval, err := runReplayEval(context.Background(), replayEvalOptions{
 +		Checkpoints: []string{"deadbeefcafe"},
 +		Agents:      []string{fakeReplayAgent, string(agentpkg.AgentNameCodex)},
 +		Model:       "model-for-failed-checkpoint",
++		TestCommand: testCommand,
 +	})
 +	if err != nil {
 +		t.Fatalf("runReplayEval() error = %v", err)
@@ -3337,6 +3353,9 @@ index 00000000..55f1723a
 +		}
 +		if run.Test.Status != replayTestStatusSkipped {
 +			t.Fatalf("%s test status = %q, want skipped", run.Agent, run.Test.Status)
++		}
++		if run.Test.Command != testCommand {
++			t.Fatalf("%s test command = %q, want requested skipped command", run.Agent, run.Test.Command)
 +		}
 +	}
 +	for _, agentName := range []string{fakeReplayAgent, string(agentpkg.AgentNameCodex)} {
@@ -3454,6 +3473,7 @@ index 00000000..55f1723a
 +	eval, err := runReplayEval(context.Background(), replayEvalOptions{
 +		Checkpoints: []string{cpID},
 +		Agents:      []string{fakeReplayAgent},
++		TestCommand: "go test ./...",
 +	})
 +	if err != nil {
 +		t.Fatalf("runReplayEval() error = %v", err)
@@ -3464,6 +3484,9 @@ index 00000000..55f1723a
 +	run := eval.Runs[0]
 +	if run.Status != replayStatusSkipped || run.Test.Status != replayTestStatusSkipped {
 +		t.Fatalf("run = %+v, want skipped run and skipped test", run)
++	}
++	if run.Test.Command != "go test ./..." {
++		t.Fatalf("test command = %q, want requested skipped command", run.Test.Command)
 +	}
 +	if run.ChangedFiles == nil {
 +		t.Fatal("ChangedFiles is nil, want stable empty JSON array")

@@ -69,6 +69,8 @@ Proves:
   discovery instead of disabling the replay timeout
 - timed-out test commands preserve partial test output and a structured
   timeout error in saved reports
+- skipped test rows preserve the requested test command when setup, agent,
+  checkpoint, or agent-availability failures prevent the command from running
 - replay agents and optional test commands each receive their own `--timeout`
   budget, so a slow successful agent does not shorten the test timeout window
 - worktree setup failures after checkpoint resolution still save a failed replay

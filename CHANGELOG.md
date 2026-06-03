@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.46 - 2026-06-03
+
+- Preserved requested `test.command` values on skipped test rows when replay
+  setup, agent execution, checkpoint resolution, or agent availability prevents
+  the command from running.
+- Added a shared skipped-test initializer so synthetic replay/eval rows keep the
+  same test-command evidence.
+- Strengthened Go coverage for setup failure, agent failure, missing
+  checkpoint, and missing-agent-command skip paths.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.45 - 2026-06-03
 
 - Preserved selected eval `agents` when normalizing reports with empty `runs`

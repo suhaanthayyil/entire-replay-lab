@@ -122,6 +122,8 @@ contract exists.
 - Truncation is always signaled with `diff_truncated` or `output_truncated`.
 - Failed test commands may include `test.error` with the launch, cancellation,
   or timeout cause.
+- Skipped test rows may still include `test.command` when a command was
+  requested but an earlier replay failure prevented execution.
 - `changed_files` remains an array, including when diff inspection fails and a
   warning is recorded.
 - Report readers normalize legacy null required arrays such as `files_touched`,
