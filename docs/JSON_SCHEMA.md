@@ -124,5 +124,7 @@ contract exists.
   or timeout cause.
 - `changed_files` remains an array, including when diff inspection fails and a
   warning is recorded.
+- Report readers normalize legacy null required arrays such as `files_touched`,
+  `changed_files`, `agents`, `summaries`, and `runs` before JSON output.
 - Missing optional integrations use explicit false/empty values instead of
   failing the whole run.

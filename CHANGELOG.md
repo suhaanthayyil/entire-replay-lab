@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.43 - 2026-06-03
+
+- Normalized required replay/eval JSON arrays when saving, reading, or printing
+  reports, so legacy `null` arrays are re-emitted as schema-valid empty arrays.
+- Ensured eval `summaries` is always serialized, including the empty-array case
+  required by the schema.
+- Added focused Go coverage for legacy replay and eval reports with null
+  `files_touched`, `changed_files`, `agents`, `summaries`, and `runs` arrays.
+- Updated acceptance, architecture, testing, JSON schema, and reproducibility
+  docs.
+- Refreshed the patch artifact and pinned patch SHA-256.
+
 ## v0.1.42 - 2026-06-03
 
 - Kept replay reports schema-stable when post-run diff inspection fails,

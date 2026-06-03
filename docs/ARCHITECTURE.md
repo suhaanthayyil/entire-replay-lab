@@ -106,6 +106,8 @@ Replay Lab is intentionally diagnostic:
   derived from the command `--timeout` value
 - diff-inspection failures are saved as replay warnings while `changed_files`
   remains a schema-valid empty array
+- report save/read/JSON output paths normalize required replay/eval arrays so
+  legacy null arrays are re-emitted as schema-valid empty arrays
 - diff collection uses a temporary git index so kept replay worktrees remain
   natural to inspect, with untracked files still shown as untracked
 - semantic scoring uses a temporary git index and unreachable comparison commit,

@@ -33,10 +33,10 @@ index 3c4c62e5..fd73ff5e 100644
  | Flag                                        | Description                                                                                                       |
 diff --git a/cmd/entire/cli/replay.go b/cmd/entire/cli/replay.go
 new file mode 100644
-index 00000000..43f2ef52
+index 00000000..05a32d11
 --- /dev/null
 +++ b/cmd/entire/cli/replay.go
-@@ -0,0 +1,2033 @@
+@@ -0,0 +1,2072 @@
 +package cli
 +
 +import (
@@ -173,7 +173,7 @@ index 00000000..43f2ef52
 +	StartedAt     time.Time                `json:"started_at"`
 +	FinishedAt    time.Time                `json:"finished_at"`
 +	Agents        []string                 `json:"agents"`
-+	Summaries     []ReplayEvalAgentSummary `json:"summaries,omitempty"`
++	Summaries     []ReplayEvalAgentSummary `json:"summaries"`
 +	Runs          []ReplayRun              `json:"runs"`
 +	ResultPath    string                   `json:"result_path,omitempty"`
 +}
@@ -1327,9 +1327,7 @@ index 00000000..43f2ef52
 +	if err != nil {
 +		return "", err
 +	}
-+	if run.SchemaVersion == 0 {
-+		run.SchemaVersion = replaySchemaVersion
-+	}
++	normalizeReplayRunForJSON(run)
 +	path := filepath.Join(dir, run.ID+".json")
 +	run.ResultPath = path
 +	return path, writeReplayFile(path, run)
@@ -1350,9 +1348,7 @@ index 00000000..43f2ef52
 +	if err := json.Unmarshal(data, &run); err != nil {
 +		return nil, fmt.Errorf("parse replay report: %w", err)
 +	}
-+	if run.SchemaVersion == 0 {
-+		run.SchemaVersion = replaySchemaVersion
-+	}
++	normalizeReplayRunForJSON(&run)
 +	run.ResultPath = path
 +	return &run, nil
 +}
@@ -1362,14 +1358,7 @@ index 00000000..43f2ef52
 +	if err != nil {
 +		return "", err
 +	}
-+	if run.SchemaVersion == 0 {
-+		run.SchemaVersion = replaySchemaVersion
-+	}
-+	for i := range run.Runs {
-+		if run.Runs[i].SchemaVersion == 0 {
-+			run.Runs[i].SchemaVersion = replaySchemaVersion
-+		}
-+	}
++	normalizeReplayEvalForJSON(run)
 +	path := filepath.Join(dir, run.ID+".json")
 +	run.ResultPath = path
 +	return path, writeReplayFile(path, run)
@@ -1390,16 +1379,45 @@ index 00000000..43f2ef52
 +	if err := json.Unmarshal(data, &run); err != nil {
 +		return nil, fmt.Errorf("parse eval report: %w", err)
 +	}
++	normalizeReplayEvalForJSON(&run)
++	run.ResultPath = path
++	return &run, nil
++}
++
++func normalizeReplayRunForJSON(run *ReplayRun) {
++	if run == nil {
++		return
++	}
 +	if run.SchemaVersion == 0 {
 +		run.SchemaVersion = replaySchemaVersion
 +	}
-+	for i := range run.Runs {
-+		if run.Runs[i].SchemaVersion == 0 {
-+			run.Runs[i].SchemaVersion = replaySchemaVersion
-+		}
++	if run.Spec.FilesTouched == nil {
++		run.Spec.FilesTouched = []string{}
 +	}
-+	run.ResultPath = path
-+	return &run, nil
++	if run.ChangedFiles == nil {
++		run.ChangedFiles = []string{}
++	}
++}
++
++func normalizeReplayEvalForJSON(run *ReplayEvalRun) {
++	if run == nil {
++		return
++	}
++	if run.SchemaVersion == 0 {
++		run.SchemaVersion = replaySchemaVersion
++	}
++	if run.Agents == nil {
++		run.Agents = []string{}
++	}
++	if run.Summaries == nil {
++		run.Summaries = []ReplayEvalAgentSummary{}
++	}
++	if run.Runs == nil {
++		run.Runs = []ReplayRun{}
++	}
++	for i := range run.Runs {
++		normalizeReplayRunForJSON(&run.Runs[i])
++	}
 +}
 +
 +func replayRunsDir(ctx context.Context) (string, error) {
@@ -1422,6 +1440,7 @@ index 00000000..43f2ef52
 +	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 +		return fmt.Errorf("create replay result dir: %w", err)
 +	}
++	value = normalizeReplayJSONValue(value)
 +	data, err := json.MarshalIndent(value, "", "  ")
 +	if err != nil {
 +		return fmt.Errorf("marshal replay result: %w", err)
@@ -2063,6 +2082,7 @@ index 00000000..43f2ef52
 +}
 +
 +func writeReplayJSON(w io.Writer, value any) error {
++	value = normalizeReplayJSONValue(value)
 +	encoder := json.NewEncoder(w)
 +	encoder.SetIndent("", "  ")
 +	if err := encoder.Encode(value); err != nil {
@@ -2070,12 +2090,31 @@ index 00000000..43f2ef52
 +	}
 +	return nil
 +}
++
++func normalizeReplayJSONValue(value any) any {
++	switch v := value.(type) {
++	case *ReplayRun:
++		normalizeReplayRunForJSON(v)
++		return v
++	case ReplayRun:
++		normalizeReplayRunForJSON(&v)
++		return v
++	case *ReplayEvalRun:
++		normalizeReplayEvalForJSON(v)
++		return v
++	case ReplayEvalRun:
++		normalizeReplayEvalForJSON(&v)
++		return v
++	default:
++		return value
++	}
++}
 diff --git a/cmd/entire/cli/replay_test.go b/cmd/entire/cli/replay_test.go
 new file mode 100644
-index 00000000..3f83a273
+index 00000000..ab6f5e58
 --- /dev/null
 +++ b/cmd/entire/cli/replay_test.go
-@@ -0,0 +1,1697 @@
+@@ -0,0 +1,1849 @@
 +package cli
 +
 +import (
@@ -2722,6 +2761,146 @@ index 00000000..3f83a273
 +	}
 +	if loaded.ID != run.ID || loaded.Spec.CheckpointID != cpID || loaded.SchemaVersion != replaySchemaVersion {
 +		t.Fatalf("loaded run = %+v", loaded)
++	}
++}
++
++func TestReadReplayRunNormalizesLegacyNullArrays(t *testing.T) {
++	_, _, _, _ = newReplayRepo(t)
++	dir, err := replayRunsDir(context.Background())
++	if err != nil {
++		t.Fatalf("replayRunsDir() error = %v", err)
++	}
++	if err := os.MkdirAll(dir, 0o750); err != nil {
++		t.Fatalf("mkdir replay runs dir: %v", err)
++	}
++	reportPath := filepath.Join(dir, "legacy-null-arrays.json")
++	if err := os.WriteFile(reportPath, []byte(`{
++  "schema_version": 1,
++  "id": "legacy-null-arrays",
++  "spec": {
++    "checkpoint_id": "a1b2c3d4e5f6",
++    "prompt": "Do work",
++    "target_commit": "target",
++    "base_commit": "base",
++    "files_touched": null
++  },
++  "agent": "fake-agent",
++  "status": "failed",
++  "changed_files": null,
++  "test": {
++    "status": "skipped"
++  },
++  "metrics": {
++    "file_precision": 0,
++    "file_recall": 0,
++    "file_overlap": 0,
++    "risk_score": 0,
++    "semantic_available": false
++  }
++}`), 0o600); err != nil {
++		t.Fatalf("write legacy replay report: %v", err)
++	}
++
++	loaded, err := readReplayRun(context.Background(), "legacy-null-arrays")
++	if err != nil {
++		t.Fatalf("readReplayRun() error = %v", err)
++	}
++	if loaded.Spec.FilesTouched == nil {
++		t.Fatal("FilesTouched is nil, want stable empty JSON array")
++	}
++	if loaded.ChangedFiles == nil {
++		t.Fatal("ChangedFiles is nil, want stable empty JSON array")
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, loaded); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	if strings.Contains(out.String(), `"files_touched": null`) || strings.Contains(out.String(), `"changed_files": null`) {
++		t.Fatalf("legacy replay report JSON still contains null arrays:\n%s", out.String())
++	}
++}
++
++func TestReadReplayEvalNormalizesLegacyRequiredArrays(t *testing.T) {
++	_, _, _, _ = newReplayRepo(t)
++	dir, err := replayEvalsDir(context.Background())
++	if err != nil {
++		t.Fatalf("replayEvalsDir() error = %v", err)
++	}
++	if err := os.MkdirAll(dir, 0o750); err != nil {
++		t.Fatalf("mkdir replay evals dir: %v", err)
++	}
++	reportPath := filepath.Join(dir, "legacy-eval-null-arrays.json")
++	if err := os.WriteFile(reportPath, []byte(`{
++  "schema_version": 1,
++  "id": "legacy-eval-null-arrays",
++  "agents": null,
++  "summaries": null,
++  "runs": [
++    {
++      "schema_version": 1,
++      "id": "legacy-run-null-arrays",
++      "spec": {
++        "checkpoint_id": "a1b2c3d4e5f6",
++        "prompt": "Do work",
++        "target_commit": "target",
++        "base_commit": "base",
++        "files_touched": null
++      },
++      "agent": "fake-agent",
++      "status": "skipped",
++      "changed_files": null,
++      "test": {
++        "status": "skipped"
++      },
++      "metrics": {
++        "file_precision": 0,
++        "file_recall": 0,
++        "file_overlap": 0,
++        "risk_score": 0,
++        "semantic_available": false
++      }
++    }
++  ]
++}`), 0o600); err != nil {
++		t.Fatalf("write legacy eval report: %v", err)
++	}
++
++	loaded, err := readReplayEval(context.Background(), "legacy-eval-null-arrays")
++	if err != nil {
++		t.Fatalf("readReplayEval() error = %v", err)
++	}
++	if loaded.Agents == nil {
++		t.Fatal("Agents is nil, want stable empty JSON array")
++	}
++	if loaded.Summaries == nil {
++		t.Fatal("Summaries is nil, want stable empty JSON array")
++	}
++	if loaded.Runs == nil || len(loaded.Runs) != 1 {
++		t.Fatalf("Runs = %+v, want one embedded run", loaded.Runs)
++	}
++	if loaded.Runs[0].Spec.FilesTouched == nil {
++		t.Fatal("embedded FilesTouched is nil, want stable empty JSON array")
++	}
++	if loaded.Runs[0].ChangedFiles == nil {
++		t.Fatal("embedded ChangedFiles is nil, want stable empty JSON array")
++	}
++	var out bytes.Buffer
++	if err := writeReplayJSON(&out, loaded); err != nil {
++		t.Fatalf("writeReplayJSON() error = %v", err)
++	}
++	for _, forbidden := range []string{
++		`"agents": null`,
++		`"summaries": null`,
++		`"runs": null`,
++		`"files_touched": null`,
++		`"changed_files": null`,
++	} {
++		if strings.Contains(out.String(), forbidden) {
++			t.Fatalf("legacy eval report JSON contains %s:\n%s", forbidden, out.String())
++		}
++	}
++	if !strings.Contains(out.String(), `"summaries": []`) {
++		t.Fatalf("legacy eval report JSON omitted required empty summaries array:\n%s", out.String())
 +	}
 +}
 +
@@ -3539,6 +3718,18 @@ index 00000000..3f83a273
 +	}
 +	if decoded.ID != run.ID || decoded.Spec.CheckpointID != run.Spec.CheckpointID {
 +		t.Fatalf("decoded = %+v", decoded)
++	}
++	if decoded.SchemaVersion != replaySchemaVersion {
++		t.Fatalf("SchemaVersion = %d, want %d", decoded.SchemaVersion, replaySchemaVersion)
++	}
++	if decoded.Spec.FilesTouched == nil {
++		t.Fatal("decoded FilesTouched is nil, want stable empty JSON array")
++	}
++	if decoded.ChangedFiles == nil {
++		t.Fatal("decoded ChangedFiles is nil, want stable empty JSON array")
++	}
++	if strings.Contains(out.String(), `"files_touched": null`) || strings.Contains(out.String(), `"changed_files": null`) {
++		t.Fatalf("stable replay JSON contains null arrays:\n%s", out.String())
 +	}
 +}
 +

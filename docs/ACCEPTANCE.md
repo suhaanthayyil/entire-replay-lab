@@ -87,6 +87,8 @@ Proves:
   CLI checkout without mutating that checkout's git status
 - saved replay/eval reports can be rendered from result JSON in text and
   schema-valid JSON modes
+- report readers normalize legacy null required arrays back to empty arrays for
+  schema-valid `--json` output
 - missing replay/eval report IDs fail with clear `read ... report` errors in
   text and `--json` modes
 - eval checkpoint resolution failures still produce one failed, schema-valid
